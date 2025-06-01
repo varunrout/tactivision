@@ -15,8 +15,8 @@ export default function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-6">
+      <div className="flex h-16 w-full items-center justify-between"> {/* Removed px-4 sm:px-6 lg:px-8 */}
+        <div className="flex items-center gap-6 pl-4 sm:pl-6 lg:pl-8"> {/* Added padding here to keep left content from edge */}
           {isMobile && (
             <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-primary-foreground hover:bg-primary/80 hover:text-accent">
               <Menu className="h-6 w-6" />
@@ -35,7 +35,7 @@ export default function AppHeader() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 pr-4 sm:pr-6 lg:pr-8"> {/* Added padding here to keep right content from edge */}
           <Button variant="ghost" size="icon" className="text-foreground hover:text-accent">
             <Search className="h-5 w-5" />
             <span className="sr-only">Search</span>
