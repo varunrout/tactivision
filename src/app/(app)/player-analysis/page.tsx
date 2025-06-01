@@ -21,7 +21,7 @@ const fetchPlayerProfile = async (playerId: string | null): Promise<PlayerProfil
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/player/profile?playerId=${playerId}`);
+      const response = await fetch(`/player-analysis/profile?player_id=${playerId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch player profile', response.status, response.statusText);
         return null;
@@ -65,7 +65,7 @@ const fetchPerformanceTrend = async (playerId: string | null, metric: string): P
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/player/performance-trend?playerId=${playerId}&metric=${metric}`);
+      const response = await fetch(`/player-analysis/performance-trend?player_id=${playerId}&metric=${metric}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch performance trend', response.status, response.statusText);
         return null;
@@ -96,7 +96,7 @@ const fetchPlayerEventMap = async (playerId: string | null): Promise<PlayerEvent
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/player/event-map?playerId=${playerId}`);
+      const response = await fetch(`/player-analysis/event-map?player_id=${playerId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch player event map', response.status, response.statusText);
         return [];
@@ -135,7 +135,7 @@ export default function PlayerAnalysisPage() {
   useEffect(() => {
     if (selectedPlayer) {
       setLoadingProfile(true);
-      setLoadingTrend(true); // Also reset trend loading when player changes
+      setLoadingTrend(true); 
       setLoadingEvents(true);
       setApiError(false);
 
@@ -149,13 +149,12 @@ export default function PlayerAnalysisPage() {
 
       const loadEvents = async () => {
         const data = await fetchPlayerEventMap(selectedPlayer.id);
-         if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) setApiError(true); // Could be empty array
+         if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) setApiError(true); 
         setEventMapData(data || []);
         setLoadingEvents(false);
       };
       loadEvents();
       
-      // Trend data is loaded separately by handleMetricChange or initial effect for currentMetric
     } else {
       setProfile(null);
       setPerformanceData(null);
@@ -170,11 +169,13 @@ export default function PlayerAnalysisPage() {
   useEffect(() => {
     if (selectedPlayer) {
       setLoadingTrend(true);
-      setApiError(false); // Reset API error specific to trend
+      setApiError(false); 
       const loadTrend = async () => {
         const data = await fetchPerformanceTrend(selectedPlayer.id, currentMetric);
         if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) {
-           // Only set overall apiError if profile also failed, or handle trend-specific error display
+          // If profile also failed, apiError would be true. 
+          // If only trend fails, we might want a more specific error indicator.
+          // For now, a missing trend data will show the empty placeholder.
         }
         setPerformanceData(data);
         setLoadingTrend(false);
@@ -186,7 +187,6 @@ export default function PlayerAnalysisPage() {
 
   const handleMetricChange = (metric: string) => {
     setCurrentMetric(metric);
-    // The useEffect for [selectedPlayer, currentMetric] will handle fetching
   };
 
   if (!selectedPlayer && !loadingProfile && !loadingTrend && !loadingEvents) {
@@ -198,7 +198,7 @@ export default function PlayerAnalysisPage() {
     );
   }
   
-  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api') {
+  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !profile && !loadingProfile) { // Show general API error if profile failed
     return (
       <>
         <PageHeader title="Player Analysis" />
@@ -264,7 +264,7 @@ export default function PlayerAnalysisPage() {
             </Tabs>
           </CardHeader>
           <CardContent>
-            {loadingTrend || !performanceData ? <DataPlaceholder state="loading" className="h-[300px]" /> : performanceData.data.length === 0 ? <DataPlaceholder state="empty" title="No Trend Data" message={`Performance trend for ${currentMetric} is not available.`} className="h-[300px]" /> : (
+            {loadingTrend || (!performanceData && process.env.NEXT_PUBLIC_DATA_SOURCE !== 'api') ? <DataPlaceholder state="loading" className="h-[300px]" /> : (!performanceData || performanceData.data.length === 0) ? <DataPlaceholder state="empty" title="No Trend Data" message={`Performance trend for ${currentMetric} is not available.`} className="h-[300px]" /> : (
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={performanceData.data}>

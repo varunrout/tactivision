@@ -12,7 +12,16 @@ import { MOCK_TEAMS as MOCK_TEAMS_DATA } from '@/lib/constants';
 import { useState, useEffect } from 'react';
 import { DataPlaceholder } from '@/components/shared/data-placeholder';
 
-const allMockTeams: Team[] = Object.values(MOCK_TEAMS_DATA).flat();
+// This will be populated by API call if dataSource is 'api', or use MOCK_TEAMS_DATA otherwise
+let allTeamsForSelection: Team[] = Object.values(MOCK_TEAMS_DATA).flat();
+
+const fetchAllTeamsForSelection = async (): Promise<Team[]> => {
+  // Similar to player comparison, a general "all teams" endpoint isn't specified for core selectors.
+  // API mode will also use MOCK_TEAMS_DATA for dropdowns for now.
+  // In a real app, this might come from /core-selectors/teams without competition/season, or be tied to global filters.
+  return Object.values(MOCK_TEAMS_DATA).flat();
+};
+
 
 const fetchHeadToHead = async (team1Id: string | null, team2Id: string | null): Promise<HeadToHeadStats | null> => {
   if (!team1Id || !team2Id) return null;
@@ -20,7 +29,7 @@ const fetchHeadToHead = async (team1Id: string | null, team2Id: string | null): 
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/matchup/h2h?team1Id=${team1Id}&team2Id=${team2Id}`);
+      const response = await fetch(`/matchup-analysis/head-to-head?team1=${team1Id}&team2=${team2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch H2H stats', response.status, response.statusText);
         return null;
@@ -54,7 +63,7 @@ const fetchTeamStyles = async (team1Id: string | null, team2Id: string | null): 
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/matchup/team-styles?team1Id=${team1Id}&team2Id=${team2Id}`);
+      const response = await fetch(`/matchup-analysis/team-style?team1=${team1Id}&team2=${team2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch team styles', response.status, response.statusText);
         return null;
@@ -84,7 +93,7 @@ const fetchMatchPrediction = async (team1Id: string | null, team2Id: string | nu
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/matchup/prediction?team1Id=${team1Id}&team2Id=${team2Id}`);
+      const response = await fetch(`/matchup-analysis/matchup-prediction?team1=${team1Id}&team2=${team2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch match prediction', response.status, response.statusText);
         return null;
@@ -122,7 +131,19 @@ export default function MatchupAnalysisPage() {
   const [loadingStyles, setLoadingStyles] = useState(false);
   const [loadingPrediction, setLoadingPrediction] = useState(false);
   const [apiError, setApiError] = useState(false);
+  const [selectableTeams, setSelectableTeams] = useState<Team[]>([]);
   
+  useEffect(() => {
+    // Fetch all teams for dropdowns on mount
+    const loadTeams = async () => {
+        const teams = await fetchAllTeamsForSelection();
+        allTeamsForSelection = teams; // Update the global-like variable
+        setSelectableTeams(teams);
+    };
+    loadTeams();
+  }, []);
+
+
   useEffect(() => {
     if (teamA && teamB) {
       setLoadingH2h(true);
@@ -159,7 +180,7 @@ export default function MatchupAnalysisPage() {
 
   const isLoading = loadingH2h || loadingStyles || loadingPrediction;
 
-  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api') {
+  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && (!teamA || !teamB) && !isLoading) { // Only show general API error if selections are made but data fails
     return (
       <>
         <PageHeader title="Matchup Analysis" />
@@ -179,8 +200,8 @@ export default function MatchupAnalysisPage() {
 
        <Card className="mb-6 rounded-[1rem] shadow-soft p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-          <SelectTeamInput label="Team A" selectedTeam={teamA} onSelectTeam={setTeamA} />
-          <SelectTeamInput label="Team B" selectedTeam={teamB} onSelectTeam={setTeamB} otherSelectedTeam={teamA}/>
+          <SelectTeamInput label="Team A" selectedTeam={teamA} onSelectTeam={setTeamA} teams={selectableTeams} otherSelectedTeam={teamB} />
+          <SelectTeamInput label="Team B" selectedTeam={teamB} onSelectTeam={setTeamB} teams={selectableTeams} otherSelectedTeam={teamA}/>
         </div>
       </Card>
 
@@ -261,17 +282,18 @@ interface SelectTeamInputProps {
   label: string;
   selectedTeam: Team | null;
   onSelectTeam: (team: Team | null) => void;
+  teams: Team[];
   otherSelectedTeam?: Team | null;
 }
 
-function SelectTeamInput({ label, selectedTeam, onSelectTeam, otherSelectedTeam }: SelectTeamInputProps) {
+function SelectTeamInput({ label, selectedTeam, onSelectTeam, teams, otherSelectedTeam }: SelectTeamInputProps) {
   return (
     <div>
       <label className="block text-sm font-medium text-muted-foreground mb-1">{label}</label>
       <Select
         value={selectedTeam?.id || ""}
         onValueChange={(teamId) => {
-          const team = allMockTeams.find(t => t.id === teamId) || null;
+          const team = teams.find(t => t.id === teamId) || null;
           onSelectTeam(team);
         }}
       >
@@ -281,7 +303,7 @@ function SelectTeamInput({ label, selectedTeam, onSelectTeam, otherSelectedTeam 
         <SelectContent>
           <SelectGroup>
             <SelectLabel>Teams</SelectLabel>
-            {allMockTeams.filter(team => team.id !== otherSelectedTeam?.id).map(team => (
+            {teams.filter(team => team.id !== otherSelectedTeam?.id).map(team => (
               <SelectItem key={team.id} value={team.id}>
                 {team.name}
               </SelectItem>

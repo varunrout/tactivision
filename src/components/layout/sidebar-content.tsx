@@ -1,3 +1,4 @@
+
 "use client";
 
 import { NAV_LINKS, MOCK_COMPETITIONS, MOCK_SEASONS, MOCK_TEAMS, MOCK_MATCHES, MOCK_PLAYERS } from '@/lib/constants';
@@ -10,6 +11,7 @@ import { useFilters } from '@/contexts/filter-context';
 import type { Competition, Season, Team, Match, Player } from '@/types';
 import { BarChart2, Users, BarChartHorizontalBig, GitCompareArrows, Presentation, SearchCheck } from 'lucide-react';
 import Image from 'next/image';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const navIconsMap: { [key: string]: LucideIcon } = {
   "/dashboard": BarChart2,
@@ -18,6 +20,26 @@ const navIconsMap: { [key: string]: LucideIcon } = {
   "/tactical-insights": Presentation,
   "/matchup-analysis": SearchCheck,
 };
+
+// Helper function to fetch data
+async function fetchData<T>(endpoint: string, mockData: T): Promise<T> {
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        console.error(`API Error: Failed to fetch from ${endpoint}`, response.status, response.statusText);
+        return mockData; // Fallback to mock data on API error
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(`Fetch Error: Could not fetch from ${endpoint}`, error);
+      return mockData; // Fallback to mock data on fetch error
+    }
+  }
+  return mockData;
+}
+
 
 export function SidebarContent() {
   const {
@@ -28,11 +50,90 @@ export function SidebarContent() {
     selectedPlayer, setPlayer,
   } = useFilters();
 
-  const competitions = MOCK_COMPETITIONS;
-  const seasons = selectedCompetition ? (MOCK_SEASONS as any)[selectedCompetition.id] || [] : [];
-  const teams = selectedSeason ? (MOCK_TEAMS as any)[selectedSeason.id] || [] : [];
-  const matches = selectedTeam ? (MOCK_MATCHES as any)[selectedTeam.id] || [] : [];
-  const players = selectedTeam ? (MOCK_PLAYERS as any)[selectedTeam.id] || [] : [];
+  const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
+
+  const [loadingCompetitions, setLoadingCompetitions] = useState(false);
+  const [loadingSeasons, setLoadingSeasons] = useState(false);
+  const [loadingTeams, setLoadingTeams] = useState(false);
+  const [loadingMatches, setLoadingMatches] = useState(false);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  useEffect(() => {
+    if (dataSource === 'api') {
+      setLoadingCompetitions(true);
+      fetchData<Competition[]>('/core-selectors/competitions', MOCK_COMPETITIONS)
+        .then(setCompetitions)
+        .finally(() => setLoadingCompetitions(false));
+    } else {
+      setCompetitions(MOCK_COMPETITIONS);
+    }
+  }, [dataSource]);
+
+  useEffect(() => {
+    if (selectedCompetition) {
+      if (dataSource === 'api') {
+        setLoadingSeasons(true);
+        fetchData<Season[]>(`/core-selectors/seasons?competition_id=${selectedCompetition.id}`, (MOCK_SEASONS as any)[selectedCompetition.id] || [])
+          .then(setSeasons)
+          .finally(() => setLoadingSeasons(false));
+      } else {
+        setSeasons((MOCK_SEASONS as any)[selectedCompetition.id] || []);
+      }
+    } else {
+      setSeasons([]);
+    }
+  }, [selectedCompetition, dataSource]);
+
+  useEffect(() => {
+    if (selectedCompetition && selectedSeason) {
+      if (dataSource === 'api') {
+        setLoadingTeams(true);
+        fetchData<Team[]>(`/core-selectors/teams?competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, (MOCK_TEAMS as any)[selectedSeason.id] || [])
+          .then(setTeams)
+          .finally(() => setLoadingTeams(false));
+      } else {
+        setTeams((MOCK_TEAMS as any)[selectedSeason.id] || []);
+      }
+    } else {
+      setTeams([]);
+    }
+  }, [selectedCompetition, selectedSeason, dataSource]);
+
+  useEffect(() => {
+    if (selectedTeam && selectedCompetition && selectedSeason) {
+       if (dataSource === 'api') {
+        setLoadingMatches(true);
+        fetchData<Match[]>(`/core-selectors/matches?team_id=${selectedTeam.id}&competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, (MOCK_MATCHES as any)[selectedTeam.id] || [])
+          .then(setMatches)
+          .finally(() => setLoadingMatches(false));
+       } else {
+         setMatches((MOCK_MATCHES as any)[selectedTeam.id] || []);
+       }
+    } else {
+      setMatches([]);
+    }
+  }, [selectedTeam, selectedCompetition, selectedSeason, dataSource]);
+
+  useEffect(() => {
+    if (selectedTeam) {
+      if (dataSource === 'api') {
+        setLoadingPlayers(true);
+        fetchData<Player[]>(`/core-selectors/players?team_id=${selectedTeam.id}`, (MOCK_PLAYERS as any)[selectedTeam.id] || [])
+          .then(setPlayers)
+          .finally(() => setLoadingPlayers(false));
+      } else {
+        setPlayers((MOCK_PLAYERS as any)[selectedTeam.id] || []);
+      }
+    } else {
+      setPlayers([]);
+    }
+  }, [selectedTeam, dataSource]);
 
 
   return (
@@ -51,9 +152,10 @@ export function SidebarContent() {
                     const comp = competitions.find(c => c.id === value);
                     setCompetition(comp || null);
                   }}
+                  disabled={loadingCompetitions}
                 >
                   <SelectTrigger id="competition-select" className="w-full bg-sidebar-accent/10 border-sidebar-border text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                    <SelectValue placeholder="Select Competition" />
+                    <SelectValue placeholder={loadingCompetitions ? "Loading..." : "Select Competition"} />
                   </SelectTrigger>
                   <SelectContent className="group-data-[collapsible=icon]:hidden">
                     {competitions.map((comp) => (
@@ -73,10 +175,10 @@ export function SidebarContent() {
                       const season = seasons.find((s: Season) => s.id === value);
                       setSeason(season || null);
                     }}
-                    disabled={!selectedCompetition}
+                    disabled={!selectedCompetition || loadingSeasons || seasons.length === 0}
                   >
                     <SelectTrigger id="season-select" className="w-full bg-sidebar-accent/10 border-sidebar-border text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                      <SelectValue placeholder="Select Season" />
+                      <SelectValue placeholder={loadingSeasons ? "Loading..." : "Select Season"} />
                     </SelectTrigger>
                     <SelectContent className="group-data-[collapsible=icon]:hidden">
                       {seasons.map((season: Season) => (
@@ -97,10 +199,10 @@ export function SidebarContent() {
                       const team = teams.find((t: Team) => t.id === value);
                       setTeam(team || null);
                     }}
-                    disabled={!selectedSeason}
+                    disabled={!selectedSeason || loadingTeams || teams.length === 0}
                   >
                     <SelectTrigger id="team-select" className="w-full bg-sidebar-accent/10 border-sidebar-border text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                       <SelectValue placeholder="Select Team" />
+                       <SelectValue placeholder={loadingTeams ? "Loading..." : "Select Team"} />
                     </SelectTrigger>
                     <SelectContent className="group-data-[collapsible=icon]:hidden">
                       {teams.map((team: Team) => (
@@ -116,7 +218,7 @@ export function SidebarContent() {
                 </div>
               )}
               
-              {/* Match Select - for Dashboard and specific contexts */}
+              {/* Match Select */}
               {selectedTeam && (
                  <div>
                   <Label htmlFor="match-select" className="text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">Match</Label>
@@ -126,10 +228,10 @@ export function SidebarContent() {
                       const match = matches.find((m: Match) => m.id === value);
                       setMatch(match || null);
                     }}
-                    disabled={!selectedTeam}
+                    disabled={!selectedTeam || loadingMatches || matches.length === 0}
                   >
                     <SelectTrigger id="match-select" className="w-full bg-sidebar-accent/10 border-sidebar-border text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                      <SelectValue placeholder="Select Match" />
+                      <SelectValue placeholder={loadingMatches ? "Loading..." : "Select Match"} />
                     </SelectTrigger>
                     <SelectContent className="group-data-[collapsible=icon]:hidden">
                       {matches.map((match: Match) => (
@@ -140,7 +242,7 @@ export function SidebarContent() {
                 </div>
               )}
 
-              {/* Player Select - for Player Analysis / Comparison */}
+              {/* Player Select */}
               {selectedTeam && (
                  <div>
                   <Label htmlFor="player-select" className="text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">Player</Label>
@@ -150,10 +252,10 @@ export function SidebarContent() {
                       const player = players.find((p: Player) => p.id === value);
                       setPlayer(player || null);
                     }}
-                    disabled={!selectedTeam}
+                    disabled={!selectedTeam || loadingPlayers || players.length === 0}
                   >
                     <SelectTrigger id="player-select" className="w-full bg-sidebar-accent/10 border-sidebar-border text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                      <SelectValue placeholder="Select Player" />
+                      <SelectValue placeholder={loadingPlayers ? "Loading..." : "Select Player"} />
                     </SelectTrigger>
                     <SelectContent className="group-data-[collapsible=icon]:hidden">
                       {players.map((player: Player) => (
@@ -185,7 +287,6 @@ export function SidebarContent() {
             </nav>
           </div>
 
-          {/* Example of sub-links within an accordion, as per prompt for Tactical Insights */}
           <div className="group-data-[collapsible=icon]:hidden">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="tactical-insights-sublinks" className="border-none">
@@ -212,7 +313,6 @@ export function SidebarContent() {
 
         </div>
       </ScrollArea>
-      {/* Sidebar Footer can go here if needed */}
     </div>
   );
 }

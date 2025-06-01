@@ -12,7 +12,22 @@ import { MOCK_PLAYERS as MOCK_PLAYERS_DATA } from '@/lib/constants';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, XAxis, YAxis, Tooltip, CartesianGrid, Bar, Legend } from 'recharts';
 import { DataPlaceholder } from '@/components/shared/data-placeholder';
 
-const allMockPlayers: Player[] = Object.values(MOCK_PLAYERS_DATA).flat();
+// This will be populated by API call if dataSource is 'api', or use MOCK_PLAYERS_DATA otherwise
+let allPlayersForSelection: Player[] = Object.values(MOCK_PLAYERS_DATA).flat();
+
+
+const fetchAllPlayersForSelection = async (): Promise<Player[]> => {
+  // In a real scenario, this might fetch all players from a specific competition/season
+  // For now, we'll use a simplified approach: if API mode, maybe try to fetch all known players
+  // or expect global filters to narrow this down.
+  // The prompt GET /core-selectors/players?team_id={id} is for a specific team.
+  // A general "all players" endpoint isn't specified for core selectors yet.
+  // So, for now, API mode will also use the MOCK_PLAYERS_DATA for the dropdowns,
+  // assuming player selection is independent of other global filters for this page or that
+  // a more specific player list would be populated if global team filter was active and API was used.
+  return Object.values(MOCK_PLAYERS_DATA).flat();
+};
+
 
 const fetchRadarData = async (player1Id: string | null, player2Id: string | null): Promise<RadarDataPoint[]> => {
   if (!player1Id || !player2Id) return [];
@@ -20,7 +35,7 @@ const fetchRadarData = async (player1Id: string | null, player2Id: string | null
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/player-comparison/radar?player1Id=${player1Id}&player2Id=${player2Id}`);
+      const response = await fetch(`/player-comparison/radar?player1=${player1Id}&player2=${player2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch radar data', response.status, response.statusText);
         return [];
@@ -51,7 +66,7 @@ const fetchBarChartData = async (player1Id: string | null, player2Id: string | n
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/player-comparison/bar-chart?player1Id=${player1Id}&player2Id=${player2Id}&metric=${metric}`);
+      const response = await fetch(`/player-comparison/bar-chart?player1=${player1Id}&player2=${player2Id}&metric=${metric}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch bar chart data', response.status, response.statusText);
         return [];
@@ -69,9 +84,15 @@ const fetchBarChartData = async (player1Id: string | null, player2Id: string | n
       { metric: 'Goals', playerAValue: Math.floor(Math.random() * 30), playerBValue: Math.floor(Math.random() * 30) },
       { metric: 'Assists', playerAValue: Math.floor(Math.random() * 20), playerBValue: Math.floor(Math.random() * 20) },
       { metric: 'xG', playerAValue: parseFloat((Math.random() * 15).toFixed(1)), playerBValue: parseFloat((Math.random() * 15).toFixed(1)) },
-    ].filter(m => metric === 'all' || m.metric.toLowerCase() === metric.toLowerCase());
+    ].filter(m => barChartDataMetricMapping(metric) === 'all' || m.metric.toLowerCase() === barChartDataMetricMapping(metric).toLowerCase());
   }
 };
+
+// Helper to map display metric to API metric if needed, or just return it
+const barChartDataMetricMapping = (displayMetric: string) => {
+  // For now, assume displayMetric is the same as API metric
+  return displayMetric;
+}
 
 
 export default function PlayerComparisonPage() {
@@ -85,36 +106,47 @@ export default function PlayerComparisonPage() {
   const [loadingRadar, setLoadingRadar] = useState(false);
   const [loadingBar, setLoadingBar] = useState(false);
   const [apiError, setApiError] = useState(false);
+  const [selectablePlayers, setSelectablePlayers] = useState<Player[]>([]);
+
+  useEffect(() => {
+    // Fetch all players for dropdowns on mount
+    const loadPlayers = async () => {
+        const players = await fetchAllPlayersForSelection();
+        allPlayersForSelection = players; // Update the global-like variable for SelectPlayerInput
+        setSelectablePlayers(players);
+    };
+    loadPlayers();
+  }, []);
+
 
   useEffect(() => {
     if (playerA && playerB) {
       setLoadingRadar(true);
-      setLoadingBar(true); // bar chart loading also depends on player selection
+      // bar chart loading also depends on player selection, will be triggered by its own effect
       setApiError(false);
 
       const loadRadar = async () => {
         const data = await fetchRadarData(playerA.id, playerB.id);
-        if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && data.length === 0 && playerA && playerB) { // Check if API returned empty when it shouldn't
-             // setApiError(true); // Potentially, or handle specific errors in fetch
+        if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && data.length === 0 && playerA && playerB) {
+           // setApiError(true); // Potentially an error if API should return data
         }
         setRadarData(data);
         setLoadingRadar(false);
       };
       loadRadar();
-      // Bar chart data loading is triggered by its own effect when barChartMetric changes or players change
     } else {
       setRadarData([]);
-      setBarChartData([]); // Clear bar chart data if players are not selected
-      setApiError(false);
+      // Bar chart data is cleared by its own effect if players are not selected
     }
   }, [playerA, playerB]);
 
   useEffect(() => {
     if (playerA && playerB) {
         setLoadingBar(true);
-        setApiError(false); // Reset API error for bar chart
+        setApiError(false); 
         const loadBarData = async () => {
-            const data = await fetchBarChartData(playerA.id, playerB.id, barChartMetric);
+            const apiMetric = barChartDataMetricMapping(barChartMetric);
+            const data = await fetchBarChartData(playerA.id, playerB.id, apiMetric);
             if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && data.length === 0 && playerA && playerB) {
                 // setApiError(true); // Potentially
             }
@@ -122,6 +154,8 @@ export default function PlayerComparisonPage() {
             setLoadingBar(false);
         };
         loadBarData();
+    } else {
+        setBarChartData([]); // Clear bar chart data if players are not selected
     }
   }, [playerA, playerB, barChartMetric])
 
@@ -146,8 +180,8 @@ export default function PlayerComparisonPage() {
 
       <Card className="mb-6 rounded-[1rem] shadow-soft p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-          <SelectPlayerInput label="Player A" selectedPlayer={playerA} onSelectPlayer={setPlayerA} />
-          <SelectPlayerInput label="Player B" selectedPlayer={playerB} onSelectPlayer={setPlayerB} />
+          <SelectPlayerInput label="Player A" selectedPlayer={playerA} onSelectPlayer={setPlayerA} players={selectablePlayers} otherSelectedPlayer={playerB}/>
+          <SelectPlayerInput label="Player B" selectedPlayer={playerB} onSelectPlayer={setPlayerB} players={selectablePlayers} otherSelectedPlayer={playerA}/>
         </div>
       </Card>
       
@@ -229,16 +263,18 @@ interface SelectPlayerInputProps {
   label: string;
   selectedPlayer: Player | null;
   onSelectPlayer: (player: Player | null) => void;
+  players: Player[];
+  otherSelectedPlayer?: Player | null;
 }
 
-function SelectPlayerInput({ label, selectedPlayer, onSelectPlayer }: SelectPlayerInputProps) {
+function SelectPlayerInput({ label, selectedPlayer, onSelectPlayer, players, otherSelectedPlayer }: SelectPlayerInputProps) {
   return (
     <div>
       <label className="block text-sm font-medium text-muted-foreground mb-1">{label}</label>
       <Select
         value={selectedPlayer?.id || ""}
         onValueChange={(playerId) => {
-          const player = allMockPlayers.find(p => p.id === playerId) || null;
+          const player = players.find(p => p.id === playerId) || null;
           onSelectPlayer(player);
         }}
       >
@@ -248,7 +284,7 @@ function SelectPlayerInput({ label, selectedPlayer, onSelectPlayer }: SelectPlay
         <SelectContent>
           <SelectGroup>
             <SelectLabel>Players</SelectLabel>
-            {allMockPlayers.map(player => (
+            {players.filter(player => player.id !== otherSelectedPlayer?.id).map(player => (
               <SelectItem key={player.id} value={player.id}>
                 {player.name}
               </SelectItem>

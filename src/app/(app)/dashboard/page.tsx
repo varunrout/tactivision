@@ -13,14 +13,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import SoccerPitchSVG from '@/components/icons/soccer-pitch-svg';
 import Image from 'next/image';
 import { DataPlaceholder } from '@/components/shared/data-placeholder';
-
-// Mock data for constants if not already imported
-const MOCK_TEAMS_DATA = {
-  "s1-2324": [ 
-    { id: "team1", name: "Manchester City", logoUrl: "https://placehold.co/40x40.png?text=MC" },
-    { id: "team2", name: "Arsenal", logoUrl: "https://placehold.co/40x40.png?text=AR" },
-  ]
-};
+import { MOCK_TEAMS as MOCK_TEAMS_DATA } from '@/lib/constants';
 
 const fetchDashboardSummary = async (matchId: string | null): Promise<DashboardSummary | null> => {
   if (!matchId) return null;
@@ -28,7 +21,7 @@ const fetchDashboardSummary = async (matchId: string | null): Promise<DashboardS
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/dashboard/summary?matchId=${matchId}`);
+      const response = await fetch(`/dashboard/summary?match_id=${matchId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch dashboard summary', response.status, response.statusText);
         return null;
@@ -72,7 +65,7 @@ const fetchXgTimeline = async (matchId: string | null): Promise<XgTimelinePoint[
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/dashboard/xg-timeline?matchId=${matchId}`);
+      const response = await fetch(`/dashboard/xg-timeline?match_id=${matchId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch XG timeline', response.status, response.statusText);
         return [];
@@ -100,7 +93,7 @@ const fetchShotMapEvents = async (matchId: string | null): Promise<ShotEvent[]> 
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/api/python/dashboard/shot-map?matchId=${matchId}`);
+      const response = await fetch(`/dashboard/shot-map?match_id=${matchId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch shot map events', response.status, response.statusText);
         return [];
