@@ -1,3 +1,4 @@
+
 "use client";
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -6,35 +7,70 @@ import { Download, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useEffect } from 'react';
-import type { Player, RadarDataPoint, BarChartDataPoint, ScatterPlotDataPoint, SimilarityMapData } from '@/types';
-import { MOCK_PLAYERS, MOCK_TEAMS } from '@/lib/constants';
-import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, XAxis, YAxis, Tooltip, CartesianGrid, Bar, Legend, ScatterChart, Scatter } from 'recharts';
+import type { Player, RadarDataPoint, BarChartDataPoint } from '@/types';
+import { MOCK_PLAYERS as MOCK_PLAYERS_DATA } from '@/lib/constants';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, XAxis, YAxis, Tooltip, CartesianGrid, Bar, Legend } from 'recharts';
 import { DataPlaceholder } from '@/components/shared/data-placeholder';
 
-const allMockPlayers: Player[] = Object.values(MOCK_PLAYERS).flat();
+const allMockPlayers: Player[] = Object.values(MOCK_PLAYERS_DATA).flat();
 
-// Mock API functions
 const fetchRadarData = async (player1Id: string | null, player2Id: string | null): Promise<RadarDataPoint[]> => {
   if (!player1Id || !player2Id) return [];
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return [
-    { metric: 'Shooting', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
-    { metric: 'Passing', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
-    { metric: 'Dribbling', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
-    { metric: 'Defending', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
-    { metric: 'Pace', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
-    { metric: 'Physicality', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
-  ];
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/player-comparison/radar?player1Id=${player1Id}&player2Id=${player2Id}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch radar data', response.status, response.statusText);
+        return [];
+      }
+      const data: RadarDataPoint[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch radar data from API', error);
+      return [];
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return [
+      { metric: 'Shooting', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
+      { metric: 'Passing', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
+      { metric: 'Dribbling', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
+      { metric: 'Defending', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
+      { metric: 'Pace', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
+      { metric: 'Physicality', playerAValue: Math.random() * 100, playerBValue: Math.random() * 100, fullMark: 100 },
+    ];
+  }
 };
 
 const fetchBarChartData = async (player1Id: string | null, player2Id: string | null, metric: string): Promise<BarChartDataPoint[]> => {
   if (!player1Id || !player2Id) return [];
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return [
-    { metric: 'Goals', playerAValue: Math.floor(Math.random() * 30), playerBValue: Math.floor(Math.random() * 30) },
-    { metric: 'Assists', playerAValue: Math.floor(Math.random() * 20), playerBValue: Math.floor(Math.random() * 20) },
-    { metric: 'xG', playerAValue: parseFloat((Math.random() * 15).toFixed(1)), playerBValue: parseFloat((Math.random() * 15).toFixed(1)) },
-  ].filter(m => metric === 'all' || m.metric.toLowerCase() === metric.toLowerCase());
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/player-comparison/bar-chart?player1Id=${player1Id}&player2Id=${player2Id}&metric=${metric}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch bar chart data', response.status, response.statusText);
+        return [];
+      }
+      const data: BarChartDataPoint[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch bar chart data from API', error);
+      return [];
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return [
+      { metric: 'Goals', playerAValue: Math.floor(Math.random() * 30), playerBValue: Math.floor(Math.random() * 30) },
+      { metric: 'Assists', playerAValue: Math.floor(Math.random() * 20), playerBValue: Math.floor(Math.random() * 20) },
+      { metric: 'xG', playerAValue: parseFloat((Math.random() * 15).toFixed(1)), playerBValue: parseFloat((Math.random() * 15).toFixed(1)) },
+    ].filter(m => metric === 'all' || m.metric.toLowerCase() === metric.toLowerCase());
+  }
 };
 
 
@@ -48,28 +84,55 @@ export default function PlayerComparisonPage() {
 
   const [loadingRadar, setLoadingRadar] = useState(false);
   const [loadingBar, setLoadingBar] = useState(false);
+  const [apiError, setApiError] = useState(false);
 
   useEffect(() => {
     if (playerA && playerB) {
       setLoadingRadar(true);
-      setLoadingBar(true);
-      fetchRadarData(playerA.id, playerB.id).then(data => {
+      setLoadingBar(true); // bar chart loading also depends on player selection
+      setApiError(false);
+
+      const loadRadar = async () => {
+        const data = await fetchRadarData(playerA.id, playerB.id);
+        if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && data.length === 0 && playerA && playerB) { // Check if API returned empty when it shouldn't
+             // setApiError(true); // Potentially, or handle specific errors in fetch
+        }
         setRadarData(data);
         setLoadingRadar(false);
-      });
-      fetchBarChartData(playerA.id, playerB.id, barChartMetric).then(data => {
-        setBarChartData(data);
-        setLoadingBar(false);
-      });
+      };
+      loadRadar();
+      // Bar chart data loading is triggered by its own effect when barChartMetric changes or players change
     } else {
       setRadarData([]);
-      setBarChartData([]);
+      setBarChartData([]); // Clear bar chart data if players are not selected
+      setApiError(false);
     }
-  }, [playerA, playerB, barChartMetric]);
+  }, [playerA, playerB]);
 
-  const handleCompare = () => {
-     // Triggered by button, effect already handles fetching if players are set
-     // This is more for if there was an explicit button, currently selections trigger fetch
+  useEffect(() => {
+    if (playerA && playerB) {
+        setLoadingBar(true);
+        setApiError(false); // Reset API error for bar chart
+        const loadBarData = async () => {
+            const data = await fetchBarChartData(playerA.id, playerB.id, barChartMetric);
+            if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && data.length === 0 && playerA && playerB) {
+                // setApiError(true); // Potentially
+            }
+            setBarChartData(data);
+            setLoadingBar(false);
+        };
+        loadBarData();
+    }
+  }, [playerA, playerB, barChartMetric])
+
+
+  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api') {
+    return (
+      <>
+        <PageHeader title="Player Comparison" />
+        <DataPlaceholder state="error" title="API Error" message="Could not fetch player comparison data from the API." />
+      </>
+    );
   }
 
   return (
@@ -81,15 +144,11 @@ export default function PlayerComparisonPage() {
         </Button>
       </PageHeader>
 
-      {/* Selection Panel */}
       <Card className="mb-6 rounded-[1rem] shadow-soft p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
           <SelectPlayerInput label="Player A" selectedPlayer={playerA} onSelectPlayer={setPlayerA} />
           <SelectPlayerInput label="Player B" selectedPlayer={playerB} onSelectPlayer={setPlayerB} />
         </div>
-         {/* <Button onClick={handleCompare} disabled={!playerA || !playerB} className="mt-4 w-full md:w-auto">
-            Compare Players
-          </Button> */}
       </Card>
       
       {!playerA || !playerB ? (
@@ -98,11 +157,10 @@ export default function PlayerComparisonPage() {
         </DataPlaceholder>
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Radar Chart Comparison */}
         <Card className="rounded-[1rem] shadow-soft">
           <CardHeader><CardTitle className="text-lg">Attribute Radar</CardTitle></CardHeader>
           <CardContent>
-            {loadingRadar ? <DataPlaceholder state="loading" className="h-[350px]" /> : radarData.length === 0 ? <DataPlaceholder state="empty" className="h-[350px]" /> : (
+            {loadingRadar ? <DataPlaceholder state="loading" className="h-[350px]" /> : radarData.length === 0 ? <DataPlaceholder state="empty" title="No Radar Data" message="Radar chart data is not available for the selected players." className="h-[350px]" /> : (
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
@@ -120,7 +178,6 @@ export default function PlayerComparisonPage() {
           </CardContent>
         </Card>
 
-        {/* Bar Chart Metric Breakdown */}
         <Card className="rounded-[1rem] shadow-soft">
           <CardHeader>
             <CardTitle className="text-lg">Metric Breakdown</CardTitle>
@@ -136,7 +193,7 @@ export default function PlayerComparisonPage() {
             </Select>
           </CardHeader>
           <CardContent>
-             {loadingBar ? <DataPlaceholder state="loading" className="h-[350px]" /> : barChartData.length === 0 ? <DataPlaceholder state="empty" className="h-[350px]" /> : (
+             {loadingBar ? <DataPlaceholder state="loading" className="h-[350px]" /> : barChartData.length === 0 ? <DataPlaceholder state="empty" title="No Bar Chart Data" message={`Data for ${barChartMetric} is not available.`} className="h-[350px]" /> : (
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={barChartData}>
@@ -153,12 +210,10 @@ export default function PlayerComparisonPage() {
             )}
           </CardContent>
         </Card>
-        {/* Scatter Plot - Placeholder */}
         <Card className="rounded-[1rem] shadow-soft lg:col-span-2">
           <CardHeader><CardTitle className="text-lg">Key Stats Scatter Plot</CardTitle></CardHeader>
           <CardContent><DataPlaceholder state="custom" message="Scatter plot visualization coming soon." className="h-[300px]" /></CardContent>
         </Card>
-        {/* Similarity Map - Placeholder */}
         <Card className="rounded-[1rem] shadow-soft lg:col-span-2">
           <CardHeader><CardTitle className="text-lg">Similarity Map</CardTitle></CardHeader>
           <CardContent><DataPlaceholder state="custom" message="Player similarity network coming soon." className="h-[300px]" /></CardContent>
@@ -204,4 +259,3 @@ function SelectPlayerInput({ label, selectedPlayer, onSelectPlayer }: SelectPlay
     </div>
   );
 }
-

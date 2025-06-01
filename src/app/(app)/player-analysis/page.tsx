@@ -1,3 +1,4 @@
+
 "use client";
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -8,66 +9,116 @@ import { useFilters } from '@/contexts/filter-context';
 import Image from 'next/image';
 import type { PlayerProfile, PerformanceTrendData, PlayerEvent } from '@/types';
 import { useState, useEffect } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import SoccerPitchSVG from '@/components/icons/soccer-pitch-svg';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataPlaceholder } from '@/components/shared/data-placeholder';
-import { MOCK_PLAYERS } from '@/lib/constants'; 
+import { MOCK_PLAYERS as MOCK_PLAYERS_DATA } from '@/lib/constants'; 
 
-// Mock API functions
 const fetchPlayerProfile = async (playerId: string | null): Promise<PlayerProfile | null> => {
   if (!playerId) return null;
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  // Find player from mock data
-  let player: PlayerProfile | undefined;
-  for (const teamId in MOCK_PLAYERS) {
-    const teamPlayers = (MOCK_PLAYERS as any)[teamId] as PlayerProfile[];
-    player = teamPlayers.find(p => p.id === playerId);
-    if (player) break;
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/player/profile?playerId=${playerId}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch player profile', response.status, response.statusText);
+        return null;
+      }
+      const data: PlayerProfile = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch player profile from API', error);
+      return null;
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    let player: PlayerProfile | undefined;
+    for (const teamId in MOCK_PLAYERS_DATA) {
+      const teamPlayers = (MOCK_PLAYERS_DATA as any)[teamId] as PlayerProfile[];
+      player = teamPlayers.find(p => p.id === playerId);
+      if (player) break;
+    }
+    if (!player) return null;
+    return {
+      ...player,
+      id: playerId,
+      name: player.name || 'Selected Player',
+      position: player.position || 'Forward',
+      age: player.age || 23,
+      nationality: player.nationality || 'Norwegian',
+      teamBadgeUrl: player.teamBadgeUrl || 'https://placehold.co/40x40.png?text=TB',
+      photoUrl: player.photoUrl || 'https://placehold.co/120x120.png?text=P',
+      appearances: player.appearances || 35,
+      goals: player.goals || 28,
+      assists: player.assists || 12,
+      minutesPlayed: player.minutesPlayed || 3000,
+    };
   }
-
-  if (!player) return null;
-
-  return {
-    ...player,
-    id: playerId,
-    name: player.name || 'Selected Player',
-    position: player.position || 'Forward',
-    age: player.age || 23,
-    nationality: player.nationality || 'Norwegian',
-    teamBadgeUrl: player.teamBadgeUrl || 'https://placehold.co/40x40.png?text=TB',
-    photoUrl: player.photoUrl || 'https://placehold.co/120x120.png?text=P',
-    appearances: 35,
-    goals: 28,
-    assists: 12,
-    minutesPlayed: 3000,
-  };
 };
 
 const fetchPerformanceTrend = async (playerId: string | null, metric: string): Promise<PerformanceTrendData | null> => {
   if (!playerId) return null;
-  await new Promise(resolve => setTimeout(resolve, 1200));
-  const baseValue = metric === 'xG' ? 0.5 : metric === 'passes' ? 50 : 10;
-  return {
-    metricName: metric,
-    data: Array.from({ length: 10 }, (_, i) => ({
-      date: `Match ${i + 1}`,
-      value: parseFloat((baseValue + Math.random() * (baseValue / 2) - (baseValue / 4)).toFixed(2)),
-    })),
-  };
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/player/performance-trend?playerId=${playerId}&metric=${metric}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch performance trend', response.status, response.statusText);
+        return null;
+      }
+      const data: PerformanceTrendData = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch performance trend from API', error);
+      return null;
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    const baseValue = metric === 'xG' ? 0.5 : metric === 'passes' ? 50 : 10;
+    return {
+      metricName: metric,
+      data: Array.from({ length: 10 }, (_, i) => ({
+        date: `Match ${i + 1}`,
+        value: parseFloat((baseValue + Math.random() * (baseValue / 2) - (baseValue / 4)).toFixed(2)),
+      })),
+    };
+  }
 };
 
 const fetchPlayerEventMap = async (playerId: string | null): Promise<PlayerEvent[]> => {
   if (!playerId) return [];
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  return Array.from({ length: 20 }, (_, i) => ({
-    id: `e${i}`,
-    type: ['pass', 'shot', 'tackle'][i % 3] as 'pass' | 'shot' | 'tackle',
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    outcome: Math.random() > 0.5 ? 'success' : 'fail',
-    minute: Math.floor(Math.random() * 90) + 1,
-  }));
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/player/event-map?playerId=${playerId}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch player event map', response.status, response.statusText);
+        return [];
+      }
+      const data: PlayerEvent[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch player event map from API', error);
+      return [];
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    return Array.from({ length: 20 }, (_, i) => ({
+      id: `e${i}`,
+      type: ['pass', 'shot', 'tackle'][i % 3] as 'pass' | 'shot' | 'tackle',
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      outcome: Math.random() > 0.5 ? 'success' : 'fail',
+      minute: Math.floor(Math.random() * 90) + 1,
+    }));
+  }
 };
 
 export default function PlayerAnalysisPage() {
@@ -79,25 +130,32 @@ export default function PlayerAnalysisPage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingTrend, setLoadingTrend] = useState(true);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [apiError, setApiError] = useState(false);
 
   useEffect(() => {
     if (selectedPlayer) {
       setLoadingProfile(true);
-      setLoadingTrend(true);
+      setLoadingTrend(true); // Also reset trend loading when player changes
       setLoadingEvents(true);
+      setApiError(false);
 
-      fetchPlayerProfile(selectedPlayer.id).then(data => {
+      const loadProfile = async () => {
+        const data = await fetchPlayerProfile(selectedPlayer.id);
+        if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) setApiError(true);
         setProfile(data);
         setLoadingProfile(false);
-      });
-      fetchPerformanceTrend(selectedPlayer.id, currentMetric).then(data => {
-        setPerformanceData(data);
-        setLoadingTrend(false);
-      });
-      fetchPlayerEventMap(selectedPlayer.id).then(data => {
-        setEventMapData(data);
+      };
+      loadProfile();
+
+      const loadEvents = async () => {
+        const data = await fetchPlayerEventMap(selectedPlayer.id);
+         if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) setApiError(true); // Could be empty array
+        setEventMapData(data || []);
         setLoadingEvents(false);
-      });
+      };
+      loadEvents();
+      
+      // Trend data is loaded separately by handleMetricChange or initial effect for currentMetric
     } else {
       setProfile(null);
       setPerformanceData(null);
@@ -105,18 +163,30 @@ export default function PlayerAnalysisPage() {
       setLoadingProfile(false);
       setLoadingTrend(false);
       setLoadingEvents(false);
+      setApiError(false);
     }
-  }, [selectedPlayer, currentMetric]);
+  }, [selectedPlayer]);
   
-  const handleMetricChange = (metric: string) => {
-    setCurrentMetric(metric);
-    if(selectedPlayer) {
+  useEffect(() => {
+    if (selectedPlayer) {
       setLoadingTrend(true);
-      fetchPerformanceTrend(selectedPlayer.id, metric).then(data => {
+      setApiError(false); // Reset API error specific to trend
+      const loadTrend = async () => {
+        const data = await fetchPerformanceTrend(selectedPlayer.id, currentMetric);
+        if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) {
+           // Only set overall apiError if profile also failed, or handle trend-specific error display
+        }
         setPerformanceData(data);
         setLoadingTrend(false);
-      });
+      };
+      loadTrend();
     }
+  }, [selectedPlayer, currentMetric])
+
+
+  const handleMetricChange = (metric: string) => {
+    setCurrentMetric(metric);
+    // The useEffect for [selectedPlayer, currentMetric] will handle fetching
   };
 
   if (!selectedPlayer && !loadingProfile && !loadingTrend && !loadingEvents) {
@@ -127,6 +197,16 @@ export default function PlayerAnalysisPage() {
       </>
     );
   }
+  
+  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api') {
+    return (
+      <>
+        <PageHeader title="Player Analysis" />
+        <DataPlaceholder state="error" title="API Error" message="Could not fetch player data from the API." />
+      </>
+    );
+  }
+
 
   return (
     <>
@@ -137,7 +217,6 @@ export default function PlayerAnalysisPage() {
         </Button>
       </PageHeader>
 
-      {/* Player Profile Card */}
       <Card className="mb-6 rounded-[1rem] shadow-soft overflow-hidden border-2 border-accent/50">
         {loadingProfile || !profile ? <DataPlaceholder state="loading" className="min-h-[200px]" /> : (
           <div className="flex flex-col md:flex-row items-center p-6 gap-6 bg-gradient-to-r from-primary to-primary/90 text-primary-foreground">
@@ -173,7 +252,6 @@ export default function PlayerAnalysisPage() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Performance Trend Chart */}
         <Card className="rounded-[1rem] shadow-soft">
           <CardHeader>
             <CardTitle className="text-lg">Performance Trend</CardTitle>
@@ -186,7 +264,7 @@ export default function PlayerAnalysisPage() {
             </Tabs>
           </CardHeader>
           <CardContent>
-            {loadingTrend || !performanceData ? <DataPlaceholder state="loading" className="h-[300px]" /> : (
+            {loadingTrend || !performanceData ? <DataPlaceholder state="loading" className="h-[300px]" /> : performanceData.data.length === 0 ? <DataPlaceholder state="empty" title="No Trend Data" message={`Performance trend for ${currentMetric} is not available.`} className="h-[300px]" /> : (
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={performanceData.data}>
@@ -202,14 +280,12 @@ export default function PlayerAnalysisPage() {
           </CardContent>
         </Card>
 
-        {/* Event Map */}
         <Card className="rounded-[1rem] shadow-soft">
           <CardHeader>
             <CardTitle className="text-lg">Event Map</CardTitle>
-            {/* Add toggle for heatmap/scatter if implementing */}
           </CardHeader>
           <CardContent>
-             {loadingEvents ? <DataPlaceholder state="loading" className="h-[300px]" /> : eventMapData.length === 0 && !loadingEvents ? <DataPlaceholder state="empty" className="h-[300px]" /> : (
+             {loadingEvents ? <DataPlaceholder state="loading" className="h-[300px]" /> : eventMapData.length === 0 && !loadingEvents ? <DataPlaceholder state="empty" title="No Event Data" message="Event map data is not available for this player." className="h-[300px]" /> : (
               <SoccerPitchSVG className="aspect-[105/68]">
                 {eventMapData.map(event => (
                   <circle

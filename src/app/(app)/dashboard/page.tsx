@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatCard } from '@/components/shared/stat-card';
 import { Button } from '@/components/ui/button';
-import { Download, BarChartBig, Map, Target } from 'lucide-react';
+import { Download, BarChartBig, Target } from 'lucide-react';
 import type { DashboardSummary, XgTimelinePoint, ShotEvent } from '@/types';
 import { useFilters } from '@/contexts/filter-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,55 +14,113 @@ import SoccerPitchSVG from '@/components/icons/soccer-pitch-svg';
 import Image from 'next/image';
 import { DataPlaceholder } from '@/components/shared/data-placeholder';
 
-// Mock API functions
+// Mock data for constants if not already imported
+const MOCK_TEAMS_DATA = {
+  "s1-2324": [ 
+    { id: "team1", name: "Manchester City", logoUrl: "https://placehold.co/40x40.png?text=MC" },
+    { id: "team2", name: "Arsenal", logoUrl: "https://placehold.co/40x40.png?text=AR" },
+  ]
+};
+
 const fetchDashboardSummary = async (matchId: string | null): Promise<DashboardSummary | null> => {
   if (!matchId) return null;
-  // Simulate API call
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  // Example: Find selected match from constants, or use a default
-  const teamId = "team1"; // Assuming selectedTeam or derive from matchId
-  const team = (MOCK_TEAMS as any)["s1-2324"]?.find((t: any) => t.id === teamId);
-  const opponentTeam = (MOCK_TEAMS as any)["s1-2324"]?.find((t: any) => t.id === "team2");
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
 
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/dashboard/summary?matchId=${matchId}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch dashboard summary', response.status, response.statusText);
+        return null;
+      }
+      const data: DashboardSummary = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch dashboard summary from API', error);
+      return null;
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const teamId = "team1"; 
+    const team = (MOCK_TEAMS_DATA as any)["s1-2324"]?.find((t: any) => t.id === teamId);
+    const opponentTeam = (MOCK_TEAMS_DATA as any)["s1-2324"]?.find((t: any) => t.id === "team2");
 
-  return {
-    teamName: team?.name || "Home Team",
-    opponentName: opponentTeam?.name || "Away Team",
-    scoreline: "3 - 1",
-    date: new Date().toISOString(),
-    venue: "Etihad Stadium",
-    xgTotalHome: 2.8,
-    xgTotalAway: 1.2,
-    possessionHome: 65,
-    possessionAway: 35,
-    passAccuracyHome: 88,
-    passAccuracyAway: 75,
-    shotsOnTargetHome: 7,
-    shotsOnTargetAway: 3,
-    teamLogoUrl: team?.logoUrl || "https://placehold.co/40x40.png?text=TH",
-    opponentLogoUrl: opponentTeam?.logoUrl || "https://placehold.co/40x40.png?text=TA",
-  };
+    return {
+      teamName: team?.name || "Home Team",
+      opponentName: opponentTeam?.name || "Away Team",
+      scoreline: "3 - 1",
+      date: new Date().toISOString(),
+      venue: "Etihad Stadium",
+      xgTotalHome: 2.8,
+      xgTotalAway: 1.2,
+      possessionHome: 65,
+      possessionAway: 35,
+      passAccuracyHome: 88,
+      passAccuracyAway: 75,
+      shotsOnTargetHome: 7,
+      shotsOnTargetAway: 3,
+      teamLogoUrl: team?.logoUrl || "https://placehold.co/40x40.png?text=TH",
+      opponentLogoUrl: opponentTeam?.logoUrl || "https://placehold.co/40x40.png?text=TA",
+    };
+  }
 };
 
 const fetchXgTimeline = async (matchId: string | null): Promise<XgTimelinePoint[]> => {
   if (!matchId) return [];
-  await new Promise(resolve => setTimeout(resolve, 1200));
-  return Array.from({ length: 90 }, (_, i) => ({
-    minute: i + 1,
-    homeXg: parseFloat((Math.random() * (i / 90) * 3).toFixed(2)),
-    awayXg: parseFloat((Math.random() * (i / 90) * 2).toFixed(2)),
-  }));
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/dashboard/xg-timeline?matchId=${matchId}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch XG timeline', response.status, response.statusText);
+        return [];
+      }
+      const data: XgTimelinePoint[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch XG timeline from API', error);
+      return [];
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    return Array.from({ length: 90 }, (_, i) => ({
+      minute: i + 1,
+      homeXg: parseFloat((Math.random() * (i / 90) * 3).toFixed(2)),
+      awayXg: parseFloat((Math.random() * (i / 90) * 2).toFixed(2)),
+    }));
+  }
 };
 
 const fetchShotMapEvents = async (matchId: string | null): Promise<ShotEvent[]> => {
-   if (!matchId) return [];
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  return [
-    { id: 's1', minute: 15, player: 'Player A', team: 'Home', x: 85, y: 50, xg: 0.3, outcome: 'Goal' },
-    { id: 's2', minute: 30, player: 'Player B', team: 'Away', x: 70, y: 40, xg: 0.1, outcome: 'Saved' },
-    { id: 's3', minute: 65, player: 'Player C', team: 'Home', x: 90, y: 60, xg: 0.5, outcome: 'Goal' },
-    { id: 's4', minute: 70, player: 'Player A', team: 'Home', x: 75, y: 30, xg: 0.2, outcome: 'Missed' },
-  ];
+  if (!matchId) return [];
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/dashboard/shot-map?matchId=${matchId}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch shot map events', response.status, response.statusText);
+        return [];
+      }
+      const data: ShotEvent[] = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch shot map events from API', error);
+      return [];
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    return [
+      { id: 's1', minute: 15, player: 'Player A', team: 'Home', x: 85, y: 50, xg: 0.3, outcome: 'Goal' },
+      { id: 's2', minute: 30, player: 'Player B', team: 'Away', x: 70, y: 40, xg: 0.1, outcome: 'Saved' },
+      { id: 's3', minute: 65, player: 'Player C', team: 'Home', x: 90, y: 60, xg: 0.5, outcome: 'Goal' },
+      { id: 's4', minute: 70, player: 'Player A', team: 'Home', x: 75, y: 30, xg: 0.2, outcome: 'Missed' },
+    ];
+  }
 };
 
 
@@ -73,33 +132,42 @@ export default function DashboardPage() {
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [loadingXg, setLoadingXg] = useState(true);
   const [loadingShots, setLoadingShots] = useState(true);
+  const [apiError, setApiError] = useState(false);
 
   useEffect(() => {
     if (selectedMatch) {
       setLoadingSummary(true);
       setLoadingXg(true);
       setLoadingShots(true);
+      setApiError(false);
 
-      fetchDashboardSummary(selectedMatch.id).then(data => {
-        setSummary(data);
+      const loadData = async () => {
+        const summaryData = await fetchDashboardSummary(selectedMatch.id);
+        const xgData = await fetchXgTimeline(selectedMatch.id);
+        const shotsData = await fetchShotMapEvents(selectedMatch.id);
+
+        if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && (!summaryData || !xgData || !shotsData)) {
+          setApiError(true);
+        }
+
+        setSummary(summaryData);
+        setXgTimeline(xgData || []);
+        setShotEvents(shotsData || []);
+        
         setLoadingSummary(false);
-      });
-      fetchXgTimeline(selectedMatch.id).then(data => {
-        setXgTimeline(data);
         setLoadingXg(false);
-      });
-      fetchShotMapEvents(selectedMatch.id).then(data => {
-        setShotEvents(data);
         setLoadingShots(false);
-      });
+      };
+      loadData();
+      
     } else {
-      // Clear data or show placeholder if no match is selected
       setSummary(null);
       setXgTimeline([]);
       setShotEvents([]);
       setLoadingSummary(false);
       setLoadingXg(false);
       setLoadingShots(false);
+      setApiError(false);
     }
   }, [selectedMatch]);
 
@@ -108,6 +176,14 @@ export default function DashboardPage() {
       <>
         <PageHeader title="Dashboard" />
         <DataPlaceholder state="empty" title="No Match Selected" message="Please select a match from the sidebar to view dashboard statistics." />
+      </>
+    );
+  }
+   if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api') {
+    return (
+      <>
+        <PageHeader title="Match Dashboard" />
+        <DataPlaceholder state="error" title="API Error" message="Could not fetch data from the API. Please ensure the API is running and the data source is correctly configured." />
       </>
     );
   }
@@ -121,7 +197,6 @@ export default function DashboardPage() {
         </Button>
       </PageHeader>
 
-      {/* Summary Cards Section */}
       <div className="mb-8">
         {loadingSummary || !summary ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -154,7 +229,6 @@ export default function DashboardPage() {
       </div>
       
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* XG Timeline Chart Section */}
         <Card className="rounded-[1rem] shadow-soft">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -163,7 +237,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingXg ? <DataPlaceholder state="loading" /> : xgTimeline.length === 0 && !loadingXg ? <DataPlaceholder state="empty" /> : (
+            {loadingXg ? <DataPlaceholder state="loading" /> : xgTimeline.length === 0 && !loadingXg ? <DataPlaceholder state="empty" title="No xG Data" message="xG timeline data is not available for this match."/> : (
               <div className="h-[300px] w-full">
                 <ResponsiveContainer>
                   <AreaChart data={xgTimeline}>
@@ -189,7 +263,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Shot Map Section */}
         <Card className="rounded-[1rem] shadow-soft">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -198,14 +271,14 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingShots ? <DataPlaceholder state="loading" /> : shotEvents.length === 0 && !loadingShots ? <DataPlaceholder state="empty" /> : (
+            {loadingShots ? <DataPlaceholder state="loading" /> : shotEvents.length === 0 && !loadingShots ? <DataPlaceholder state="empty" title="No Shot Data" message="Shot map data is not available for this match."/> : (
               <SoccerPitchSVG className="aspect-[105/68]">
                 {shotEvents.map(shot => (
                   <circle
                     key={shot.id}
-                    cx={`${shot.x}%`} // Assuming x,y are % values
+                    cx={`${shot.x}%`}
                     cy={`${shot.y}%`}
-                    r={Math.max(5, shot.xg * 20)} // Size by xG
+                    r={Math.max(5, shot.xg * 20)} 
                     fill={shot.outcome === 'Goal' ? 'hsl(var(--chart-4))' : 'hsl(var(--chart-5))'}
                     fillOpacity="0.7"
                     stroke="hsl(var(--foreground))"
@@ -227,11 +300,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-// Mock data for constants if not already imported
-const MOCK_TEAMS = {
-  "s1-2324": [ 
-    { id: "team1", name: "Manchester City", logoUrl: "https://placehold.co/40x40.png?text=MC" },
-    { id: "team2", name: "Arsenal", logoUrl: "https://placehold.co/40x40.png?text=AR" },
-  ]
-};

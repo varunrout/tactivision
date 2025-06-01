@@ -1,3 +1,4 @@
+
 "use client";
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -7,53 +8,106 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import type { Team, HeadToHeadStats, TeamStyleMetrics, MatchPrediction } from '@/types';
-import { MOCK_TEAMS } from '@/lib/constants';
+import { MOCK_TEAMS as MOCK_TEAMS_DATA } from '@/lib/constants';
 import { useState, useEffect } from 'react';
 import { DataPlaceholder } from '@/components/shared/data-placeholder';
 
-const allMockTeams: Team[] = Object.values(MOCK_TEAMS).flat();
+const allMockTeams: Team[] = Object.values(MOCK_TEAMS_DATA).flat();
 
-// Mock API functions
 const fetchHeadToHead = async (team1Id: string | null, team2Id: string | null): Promise<HeadToHeadStats | null> => {
   if (!team1Id || !team2Id) return null;
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return {
-    teamAWins: Math.floor(Math.random() * 10),
-    teamBWins: Math.floor(Math.random() * 10),
-    draws: Math.floor(Math.random() * 5),
-    teamAGoals: Math.floor(Math.random() * 30),
-    teamBGoals: Math.floor(Math.random() * 30),
-    lastMeetings: [
-      { date: '2023-05-10', scoreline: '2-1', winner: 'teamA' },
-      { date: '2022-11-01', scoreline: '1-1', winner: 'draw' },
-    ]
-  };
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/matchup/h2h?team1Id=${team1Id}&team2Id=${team2Id}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch H2H stats', response.status, response.statusText);
+        return null;
+      }
+      const data: HeadToHeadStats = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch H2H stats from API', error);
+      return null;
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return {
+      teamAWins: Math.floor(Math.random() * 10),
+      teamBWins: Math.floor(Math.random() * 10),
+      draws: Math.floor(Math.random() * 5),
+      teamAGoals: Math.floor(Math.random() * 30),
+      teamBGoals: Math.floor(Math.random() * 30),
+      lastMeetings: [
+        { date: '2023-05-10', scoreline: '2-1', winner: 'teamA' },
+        { date: '2022-11-01', scoreline: '1-1', winner: 'draw' },
+      ]
+    };
+  }
 };
 
 const fetchTeamStyles = async (team1Id: string | null, team2Id: string | null): Promise<{teamAStyle: TeamStyleMetrics, teamBStyle: TeamStyleMetrics} | null> => {
   if (!team1Id || !team2Id) return null;
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  const generateStyle = (): TeamStyleMetrics => ({
-    possession: Math.floor(Math.random() * 70) + 30,
-    directness: Math.floor(Math.random() * 100),
-    pressIntensity: Math.floor(Math.random() * 100),
-    buildupSpeed: Math.floor(Math.random() * 100),
-  });
-  return { teamAStyle: generateStyle(), teamBStyle: generateStyle() };
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/matchup/team-styles?team1Id=${team1Id}&team2Id=${team2Id}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch team styles', response.status, response.statusText);
+        return null;
+      }
+      const data: {teamAStyle: TeamStyleMetrics, teamBStyle: TeamStyleMetrics} = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch team styles from API', error);
+      return null;
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const generateStyle = (): TeamStyleMetrics => ({
+      possession: Math.floor(Math.random() * 70) + 30,
+      directness: Math.floor(Math.random() * 100),
+      pressIntensity: Math.floor(Math.random() * 100),
+      buildupSpeed: Math.floor(Math.random() * 100),
+    });
+    return { teamAStyle: generateStyle(), teamBStyle: generateStyle() };
+  }
 };
 
 const fetchMatchPrediction = async (team1Id: string | null, team2Id: string | null): Promise<MatchPrediction | null> => {
-   if (!team1Id || !team2Id) return null;
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  const homeWin = Math.random();
-  const draw = Math.random() * (1 - homeWin);
-  const awayWin = 1 - homeWin - draw;
-  return {
-    homeWinProbability: parseFloat(homeWin.toFixed(2)),
-    drawProbability: parseFloat(draw.toFixed(2)),
-    awayWinProbability: parseFloat(awayWin.toFixed(2)),
-    keyDrivers: ["Team A has strong home record", "Team B missing key striker"]
-  };
+  if (!team1Id || !team2Id) return null;
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+
+  if (dataSource === 'api') {
+    try {
+      const response = await fetch(`/api/python/matchup/prediction?team1Id=${team1Id}&team2Id=${team2Id}`);
+      if (!response.ok) {
+        console.error('API Error: Failed to fetch match prediction', response.status, response.statusText);
+        return null;
+      }
+      const data: MatchPrediction = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Fetch Error: Could not fetch match prediction from API', error);
+      return null;
+    }
+  } else {
+    // Mock data logic
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const homeWin = Math.random();
+    const draw = Math.random() * (1 - homeWin);
+    const awayWin = 1 - homeWin - draw;
+    return {
+      homeWinProbability: parseFloat(homeWin.toFixed(2)),
+      drawProbability: parseFloat(draw.toFixed(2)),
+      awayWinProbability: parseFloat(awayWin.toFixed(2)),
+      keyDrivers: ["Team A has strong home record (mock)", "Team B missing key striker (mock)"]
+    };
+  }
 };
 
 export default function MatchupAnalysisPage() {
@@ -67,24 +121,52 @@ export default function MatchupAnalysisPage() {
   const [loadingH2h, setLoadingH2h] = useState(false);
   const [loadingStyles, setLoadingStyles] = useState(false);
   const [loadingPrediction, setLoadingPrediction] = useState(false);
+  const [apiError, setApiError] = useState(false);
   
   useEffect(() => {
     if (teamA && teamB) {
       setLoadingH2h(true);
       setLoadingStyles(true);
       setLoadingPrediction(true);
+      setApiError(false);
 
-      fetchHeadToHead(teamA.id, teamB.id).then(data => { setH2hStats(data); setLoadingH2h(false); });
-      fetchTeamStyles(teamA.id, teamB.id).then(data => { setTeamStyles(data); setLoadingStyles(false); });
-      fetchMatchPrediction(teamA.id, teamB.id).then(data => { setPrediction(data); setLoadingPrediction(false); });
+      const loadData = async () => {
+        const h2hData = await fetchHeadToHead(teamA.id, teamB.id);
+        const stylesData = await fetchTeamStyles(teamA.id, teamB.id);
+        const predictionData = await fetchMatchPrediction(teamA.id, teamB.id);
+
+        if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && (!h2hData || !stylesData || !predictionData)) {
+          setApiError(true);
+        }
+        
+        setH2hStats(h2hData);
+        setTeamStyles(stylesData);
+        setPrediction(predictionData);
+
+        setLoadingH2h(false);
+        setLoadingStyles(false);
+        setLoadingPrediction(false);
+      };
+      loadData();
+
     } else {
       setH2hStats(null);
       setTeamStyles(null);
       setPrediction(null);
+      setApiError(false);
     }
   }, [teamA, teamB]);
 
   const isLoading = loadingH2h || loadingStyles || loadingPrediction;
+
+  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api') {
+    return (
+      <>
+        <PageHeader title="Matchup Analysis" />
+        <DataPlaceholder state="error" title="API Error" message="Could not fetch matchup data from the API." />
+      </>
+    );
+  }
 
   return (
     <>
@@ -95,8 +177,7 @@ export default function MatchupAnalysisPage() {
         </Button>
       </PageHeader>
 
-       {/* Selection Panel */}
-      <Card className="mb-6 rounded-[1rem] shadow-soft p-6">
+       <Card className="mb-6 rounded-[1rem] shadow-soft p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
           <SelectTeamInput label="Team A" selectedTeam={teamA} onSelectTeam={setTeamA} />
           <SelectTeamInput label="Team B" selectedTeam={teamB} onSelectTeam={setTeamB} otherSelectedTeam={teamA}/>
@@ -109,7 +190,6 @@ export default function MatchupAnalysisPage() {
         </DataPlaceholder>
       ) : (
         <div className="space-y-6">
-          {/* Head-to-Head Comparison */}
           <Card className="rounded-[1rem] shadow-soft">
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Users className="text-accent h-5 w-5" /> Head-to-Head</CardTitle></CardHeader>
             <CardContent>
@@ -125,7 +205,6 @@ export default function MatchupAnalysisPage() {
             </CardContent>
           </Card>
 
-          {/* Team Style Side-by-Side */}
           <Card className="rounded-[1rem] shadow-soft">
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><BarChartBig className="text-accent h-5 w-5" /> Team Styles</CardTitle></CardHeader>
             <CardContent>
@@ -138,7 +217,6 @@ export default function MatchupAnalysisPage() {
             </CardContent>
           </Card>
           
-          {/* Matchup Prediction */}
           <Card className="rounded-[1rem] shadow-soft">
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Brain className="text-accent h-5 w-5" /> Match Prediction</CardTitle></CardHeader>
             <CardContent>
@@ -203,7 +281,7 @@ function SelectTeamInput({ label, selectedTeam, onSelectTeam, otherSelectedTeam 
         <SelectContent>
           <SelectGroup>
             <SelectLabel>Teams</SelectLabel>
-            {allMockTeams.filter(team => team.id !== otherSelectedTeam?.id).map(team => ( // Prevent selecting the same team twice
+            {allMockTeams.filter(team => team.id !== otherSelectedTeam?.id).map(team => (
               <SelectItem key={team.id} value={team.id}>
                 {team.name}
               </SelectItem>
