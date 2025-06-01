@@ -1,0 +1,242 @@
+"use client";
+
+import { PageHeader } from '@/components/shared/page-header';
+import { Button } from '@/components/ui/button';
+import { Download, Users, BarChartBig, Brain } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import type { Team, HeadToHeadStats, TeamStyleMetrics, MatchPrediction } from '@/types';
+import { MOCK_TEAMS } from '@/lib/constants';
+import { useState, useEffect } from 'react';
+import { DataPlaceholder } from '@/components/shared/data-placeholder';
+
+const allMockTeams: Team[] = Object.values(MOCK_TEAMS).flat();
+
+// Mock API functions
+const fetchHeadToHead = async (team1Id: string | null, team2Id: string | null): Promise<HeadToHeadStats | null> => {
+  if (!team1Id || !team2Id) return null;
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return {
+    teamAWins: Math.floor(Math.random() * 10),
+    teamBWins: Math.floor(Math.random() * 10),
+    draws: Math.floor(Math.random() * 5),
+    teamAGoals: Math.floor(Math.random() * 30),
+    teamBGoals: Math.floor(Math.random() * 30),
+    lastMeetings: [
+      { date: '2023-05-10', scoreline: '2-1', winner: 'teamA' },
+      { date: '2022-11-01', scoreline: '1-1', winner: 'draw' },
+    ]
+  };
+};
+
+const fetchTeamStyles = async (team1Id: string | null, team2Id: string | null): Promise<{teamAStyle: TeamStyleMetrics, teamBStyle: TeamStyleMetrics} | null> => {
+  if (!team1Id || !team2Id) return null;
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  const generateStyle = (): TeamStyleMetrics => ({
+    possession: Math.floor(Math.random() * 70) + 30,
+    directness: Math.floor(Math.random() * 100),
+    pressIntensity: Math.floor(Math.random() * 100),
+    buildupSpeed: Math.floor(Math.random() * 100),
+  });
+  return { teamAStyle: generateStyle(), teamBStyle: generateStyle() };
+};
+
+const fetchMatchPrediction = async (team1Id: string | null, team2Id: string | null): Promise<MatchPrediction | null> => {
+   if (!team1Id || !team2Id) return null;
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  const homeWin = Math.random();
+  const draw = Math.random() * (1 - homeWin);
+  const awayWin = 1 - homeWin - draw;
+  return {
+    homeWinProbability: parseFloat(homeWin.toFixed(2)),
+    drawProbability: parseFloat(draw.toFixed(2)),
+    awayWinProbability: parseFloat(awayWin.toFixed(2)),
+    keyDrivers: ["Team A has strong home record", "Team B missing key striker"]
+  };
+};
+
+export default function MatchupAnalysisPage() {
+  const [teamA, setTeamA] = useState<Team | null>(null);
+  const [teamB, setTeamB] = useState<Team | null>(null);
+
+  const [h2hStats, setH2hStats] = useState<HeadToHeadStats | null>(null);
+  const [teamStyles, setTeamStyles] = useState<{teamAStyle: TeamStyleMetrics, teamBStyle: TeamStyleMetrics} | null>(null);
+  const [prediction, setPrediction] = useState<MatchPrediction | null>(null);
+
+  const [loadingH2h, setLoadingH2h] = useState(false);
+  const [loadingStyles, setLoadingStyles] = useState(false);
+  const [loadingPrediction, setLoadingPrediction] = useState(false);
+  
+  useEffect(() => {
+    if (teamA && teamB) {
+      setLoadingH2h(true);
+      setLoadingStyles(true);
+      setLoadingPrediction(true);
+
+      fetchHeadToHead(teamA.id, teamB.id).then(data => { setH2hStats(data); setLoadingH2h(false); });
+      fetchTeamStyles(teamA.id, teamB.id).then(data => { setTeamStyles(data); setLoadingStyles(false); });
+      fetchMatchPrediction(teamA.id, teamB.id).then(data => { setPrediction(data); setLoadingPrediction(false); });
+    } else {
+      setH2hStats(null);
+      setTeamStyles(null);
+      setPrediction(null);
+    }
+  }, [teamA, teamB]);
+
+  const isLoading = loadingH2h || loadingStyles || loadingPrediction;
+
+  return (
+    <>
+      <PageHeader title="Matchup Analysis">
+        <Button variant="outline" size="sm">
+          <Download className="mr-2 h-4 w-4" />
+          Export Data
+        </Button>
+      </PageHeader>
+
+       {/* Selection Panel */}
+      <Card className="mb-6 rounded-[1rem] shadow-soft p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <SelectTeamInput label="Team A" selectedTeam={teamA} onSelectTeam={setTeamA} />
+          <SelectTeamInput label="Team B" selectedTeam={teamB} onSelectTeam={setTeamB} otherSelectedTeam={teamA}/>
+        </div>
+      </Card>
+
+      {!teamA || !teamB ? (
+        <DataPlaceholder state="custom" title="Select Teams" message="Choose two teams to start the matchup analysis.">
+          <Users className="h-16 w-16 text-muted-foreground mb-4" />
+        </DataPlaceholder>
+      ) : (
+        <div className="space-y-6">
+          {/* Head-to-Head Comparison */}
+          <Card className="rounded-[1rem] shadow-soft">
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Users className="text-accent h-5 w-5" /> Head-to-Head</CardTitle></CardHeader>
+            <CardContent>
+              {loadingH2h || !h2hStats ? <DataPlaceholder state="loading" className="min-h-[150px]" /> : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+                  <div><p className="text-2xl font-bold">{h2hStats.teamAWins}</p><p className="text-xs text-muted-foreground">{teamA.name} Wins</p></div>
+                  <div><p className="text-2xl font-bold">{h2hStats.draws}</p><p className="text-xs text-muted-foreground">Draws</p></div>
+                  <div><p className="text-2xl font-bold">{h2hStats.teamBWins}</p><p className="text-xs text-muted-foreground">{teamB.name} Wins</p></div>
+                  <div className="hidden md:block"><p className="text-2xl font-bold">{h2hStats.teamAGoals}</p><p className="text-xs text-muted-foreground">{teamA.name} Goals</p></div>
+                   <div className="hidden md:block col-span-2 md:col-span-1"><p className="text-2xl font-bold">{h2hStats.teamBGoals}</p><p className="text-xs text-muted-foreground">{teamB.name} Goals</p></div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Team Style Side-by-Side */}
+          <Card className="rounded-[1rem] shadow-soft">
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><BarChartBig className="text-accent h-5 w-5" /> Team Styles</CardTitle></CardHeader>
+            <CardContent>
+              {loadingStyles || !teamStyles ? <DataPlaceholder state="loading" className="min-h-[200px]" /> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <TeamStyleDisplay teamName={teamA.name} style={teamStyles.teamAStyle} />
+                  <TeamStyleDisplay teamName={teamB.name} style={teamStyles.teamBStyle} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Matchup Prediction */}
+          <Card className="rounded-[1rem] shadow-soft">
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Brain className="text-accent h-5 w-5" /> Match Prediction</CardTitle></CardHeader>
+            <CardContent>
+              {loadingPrediction || !prediction ? <DataPlaceholder state="loading" className="min-h-[150px]" /> : (
+                <div>
+                  <div className="flex space-x-1 rounded-full overflow-hidden mb-2 h-8 border">
+                    <div style={{ width: `${prediction.homeWinProbability * 100}%`}} className="bg-green-500 flex items-center justify-center text-white text-xs font-medium" title={`${teamA.name} Win: ${prediction.homeWinProbability*100}%`}>
+                       {(prediction.homeWinProbability * 100).toFixed(0)}%
+                    </div>
+                    <div style={{ width: `${prediction.drawProbability * 100}%`}} className="bg-yellow-500 flex items-center justify-center text-neutral-800 text-xs font-medium" title={`Draw: ${prediction.drawProbability*100}%`}>
+                       {(prediction.drawProbability * 100).toFixed(0)}%
+                    </div>
+                    <div style={{ width: `${prediction.awayWinProbability * 100}%`}} className="bg-red-500 flex items-center justify-center text-white text-xs font-medium" title={`${teamB.name} Win: ${prediction.awayWinProbability*100}%`}>
+                       {(prediction.awayWinProbability * 100).toFixed(0)}%
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{teamA.name} Win</span>
+                    <span>Draw</span>
+                    <span>{teamB.name} Win</span>
+                  </div>
+                  {prediction.keyDrivers && prediction.keyDrivers.length > 0 && (
+                    <div className="mt-4 p-3 bg-muted/50 rounded-md">
+                      <h4 className="text-sm font-semibold mb-1">Key Drivers:</h4>
+                      <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5">
+                        {prediction.keyDrivers.map((driver, i) => <li key={i}>{driver}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <p className="text-xs text-muted-foreground text-center mt-4">Last updated: {new Date().toLocaleDateString()}. All predictions are model-based and for informational purposes only.</p>
+        </div>
+      )}
+    </>
+  );
+}
+
+interface SelectTeamInputProps {
+  label: string;
+  selectedTeam: Team | null;
+  onSelectTeam: (team: Team | null) => void;
+  otherSelectedTeam?: Team | null;
+}
+
+function SelectTeamInput({ label, selectedTeam, onSelectTeam, otherSelectedTeam }: SelectTeamInputProps) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-muted-foreground mb-1">{label}</label>
+      <Select
+        value={selectedTeam?.id || ""}
+        onValueChange={(teamId) => {
+          const team = allMockTeams.find(t => t.id === teamId) || null;
+          onSelectTeam(team);
+        }}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder={`Select ${label}`} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectLabel>Teams</SelectLabel>
+            {allMockTeams.filter(team => team.id !== otherSelectedTeam?.id).map(team => ( // Prevent selecting the same team twice
+              <SelectItem key={team.id} value={team.id}>
+                {team.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function TeamStyleDisplay({ teamName, style }: { teamName: string, style: TeamStyleMetrics }) {
+  return (
+    <div>
+      <h3 className="text-md font-semibold mb-3 text-center">{teamName} Style</h3>
+      <div className="space-y-3">
+        <div>
+          <div className="flex justify-between text-xs mb-1"><span>Possession</span><span>{style.possession}%</span></div>
+          <Progress value={style.possession} className="h-2" />
+        </div>
+        <div>
+          <div className="flex justify-between text-xs mb-1"><span>Directness</span><span>{style.directness}</span></div>
+          <Progress value={style.directness} className="h-2" />
+        </div>
+        <div>
+          <div className="flex justify-between text-xs mb-1"><span>Press Intensity</span><span>{style.pressIntensity}</span></div>
+          <Progress value={style.pressIntensity} className="h-2" />
+        </div>
+        <div>
+          <div className="flex justify-between text-xs mb-1"><span>Buildup Speed</span><span>{style.buildupSpeed}</span></div>
+          <Progress value={style.buildupSpeed} className="h-2" />
+        </div>
+      </div>
+    </div>
+  );
+}

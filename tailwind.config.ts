@@ -11,8 +11,8 @@ export default {
     extend: {
       fontFamily: {
         body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
-        code: ['monospace'],
+        headline: ['Space Grotesk', 'sans-serif'],
+        code: ['Roboto Mono', 'monospace'], // As per prompt, for data labels, but Inter often used.
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -67,9 +67,11 @@ export default {
         },
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        lg: 'var(--radius)', // 0.5rem
+        md: 'calc(var(--radius) - 2px)', // 0.375rem
+        sm: 'calc(var(--radius) - 4px)', // 0.25rem
+        xl: 'calc(var(--radius) + 4px)', // 0.75rem (closer to 1rem if radius is 0.5rem)
+        '2xl': 'calc(var(--radius) + 8px)', // 1rem
       },
       keyframes: {
         'accordion-down': {
@@ -93,6 +95,9 @@ export default {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
+      boxShadow: {
+        'soft': '0 0 10px rgba(0,0,0,0.05)',
+      }
     },
   },
   plugins: [require('tailwindcss-animate')],

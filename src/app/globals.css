@@ -3,78 +3,97 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', sans-serif; /* Default body font */
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --background: 220 13% 95%; /* Light Gray #F0F2F5 */
+    --foreground: 218 39% 22%; /* Navy Blue #24344D */
+
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 218 39% 22%; /* Navy Blue #24344D */
+
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 218 39% 22%; /* Navy Blue #24344D */
+
+    --primary: 218 39% 22%; /* Navy Blue #24344D */
+    --primary-foreground: 210 20% 95%; /* Light Gray #F0F2F5 for text on Navy */
+
+    --secondary: 210 16% 90%; /* Slightly darker gray for secondary elements */
+    --secondary-foreground: 218 39% 22%; /* Navy Blue #24344D */
+
+    --muted: 210 16% 90%;
+    --muted-foreground: 220 10% 40%; /* Darker gray for muted text */
+
+    --accent: 182 100% 74%; /* Electric Blue #7DF9FF */
+    --accent-foreground: 218 39% 15%; /* Darker Navy for text on Electric Blue */
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --border: 210 10% 85%; /* Lighter gray for borders */
+    --input: 210 10% 85%;
+    --ring: 182 100% 74%; /* Electric Blue for focus rings */
+
+    --radius: 0.5rem; /* Default ShadCN radius, can be overridden per component */
+
+    /* Chart colors (can be customized further if needed) */
+    --chart-1: 182 100% 74%; /* Electric Blue */
+    --chart-2: 218 39% 40%; /* A lighter Navy */
+    --chart-3: 210 10% 60%; /* Medium Gray */
+    --chart-4: 145 100% 45%; /* Neon Green (alternative accent from prompt) */
+    --chart-5: 30 80% 55%;
+
+    /* Sidebar specific theme variables, overriding shadcn/ui defaults */
+    --sidebar-background: 218 39% 22%; /* Navy Blue #24344D */
+    --sidebar-foreground: 210 20% 95%; /* Light Gray #F0F2F5 */
+    --sidebar-primary: 182 100% 74%; /* Electric Blue for primary actions in sidebar */
+    --sidebar-primary-foreground: 218 39% 15%; /* Darker Navy for text on Electric Blue */
+    --sidebar-accent: 218 39% 30%; /* Slightly Lighter Navy for hover/active items */
+    --sidebar-accent-foreground: 182 100% 80%; /* Lighter Electric Blue for text on hover */
+    --sidebar-border: 218 39% 28%; /* Slightly lighter/different Navy for borders within sidebar */
+    --sidebar-ring: 182 100% 74%; /* Electric Blue for focus rings in sidebar */
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 222 18% 14%; /* Charcoal #1C1F26 */
+    --foreground: 210 20% 95%; /* Light Gray #F0F2F5 */
+
+    --card: 222 18% 18%; /* Darker Charcoal for cards */
+    --card-foreground: 210 20% 95%;
+
+    --popover: 222 18% 18%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 182 100% 74%; /* Electric Blue as primary in dark mode */
+    --primary-foreground: 218 39% 15%; /* Darker Navy */
+
+    --secondary: 222 18% 22%;
+    --secondary-foreground: 210 20% 95%;
+
+    --muted: 222 18% 22%;
+    --muted-foreground: 210 20% 65%;
+
+    --accent: 185 65% 50%; /* Teal #26C6DA */
+    --accent-foreground: 222 18% 14%; /* Charcoal */
+
+    --border: 222 18% 25%;
+    --input: 222 18% 25%;
+    --ring: 185 65% 50%; /* Teal */
+
+    --chart-1: 185 65% 50%; /* Teal */
+    --chart-2: 210 20% 75%;
+    /* ... other dark chart colors */
+
+    --sidebar-background: 222 18% 12%; /* Very Dark Charcoal */
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 185 65% 50%; /* Teal */
+    --sidebar-primary-foreground: 222 18% 10%;
+    --sidebar-accent: 222 18% 20%;
+    --sidebar-accent-foreground: 185 65% 60%;
+    --sidebar-border: 222 18% 15%;
+    --sidebar-ring: 185 65% 50%;
   }
 }
 
@@ -84,5 +103,12 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+}
+
+/* Glassmorphism utility class */
+.glassmorphic-panel {
+  @apply bg-card/80 backdrop-blur-md border border-white/20 rounded-[1rem] shadow-lg;
 }
