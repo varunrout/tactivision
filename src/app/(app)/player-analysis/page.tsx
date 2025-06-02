@@ -7,7 +7,7 @@ import { Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFilters } from '@/contexts/filter-context';
 import Image from 'next/image';
-import type { PlayerProfile, PerformanceTrendData, PlayerEvent } from '@/types';
+import type { PlayerProfile, PerformanceTrendData, PlayerEvent, PlayerProfileResponseAPI, PerformanceTrendResponseAPI, PlayerEventMapResponseAPI } from '@/types';
 import { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import SoccerPitchSVG from '@/components/icons/soccer-pitch-svg';
@@ -15,19 +15,34 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataPlaceholder } from '@/components/shared/data-placeholder';
 import { MOCK_PLAYERS as MOCK_PLAYERS_DATA } from '@/lib/constants'; 
 
+const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
 const fetchPlayerProfile = async (playerId: string | null): Promise<PlayerProfile | null> => {
   if (!playerId) return null;
   const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/player-analysis/profile?player_id=${playerId}`);
+      const response = await fetch(`${baseUrl}/player-analysis/profile?player_id=${playerId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch player profile', response.status, response.statusText);
         return null;
       }
-      const data: PlayerProfile = await response.json();
-      return data;
+      const apiData: PlayerProfileResponseAPI = await response.json();
+      return {
+        id: apiData.player_info.player_id.toString(),
+        player_id: apiData.player_info.player_id,
+        name: apiData.player_info.name,
+        position: apiData.player_info.position || 'N/A',
+        age: apiData.age || 0,
+        nationality: apiData.nationality || 'N/A',
+        teamBadgeUrl: apiData.teamBadgeUrl || "https://placehold.co/40x40.png?text=TB",
+        photoUrl: apiData.photoUrl || "https://placehold.co/120x120.png?text=P",
+        appearances: apiData.playing_time?.matches_played || 0,
+        goals: apiData.performance_metrics?.goals || 0,
+        assists: apiData.performance_metrics?.assists || 0,
+        minutesPlayed: apiData.playing_time?.minutes_played || 0,
+      };
     } catch (error) {
       console.error('Fetch Error: Could not fetch player profile from API', error);
       return null;
@@ -35,7 +50,7 @@ const fetchPlayerProfile = async (playerId: string | null): Promise<PlayerProfil
   } else {
     // Mock data logic
     await new Promise(resolve => setTimeout(resolve, 1000));
-    let player: PlayerProfile | undefined;
+    let player: PlayerProfile | undefined; // Using PlayerProfile for mock as well
     for (const teamId in MOCK_PLAYERS_DATA) {
       const teamPlayers = (MOCK_PLAYERS_DATA as any)[teamId] as PlayerProfile[];
       player = teamPlayers.find(p => p.id === playerId);
@@ -44,7 +59,8 @@ const fetchPlayerProfile = async (playerId: string | null): Promise<PlayerProfil
     if (!player) return null;
     return {
       ...player,
-      id: playerId,
+      id: playerId, // Ensure id is present
+      player_id: parseInt(playerId, 10), // Ensure player_id is present
       name: player.name || 'Selected Player',
       position: player.position || 'Forward',
       age: player.age || 23,
@@ -65,13 +81,19 @@ const fetchPerformanceTrend = async (playerId: string | null, metric: string): P
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/player-analysis/performance-trend?player_id=${playerId}&metric=${metric}`);
+      const response = await fetch(`${baseUrl}/player-analysis/performance-trend?player_id=${playerId}&metric=${metric}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch performance trend', response.status, response.statusText);
         return null;
       }
-      const data: PerformanceTrendData = await response.json();
-      return data;
+      const apiData: PerformanceTrendResponseAPI = await response.json();
+      return {
+        metricName: apiData.metric,
+        data: apiData.trend_data.map(d => ({
+          date: d.opponent || `Match ${d.match_number}`, // Use opponent as date label if available
+          value: d.value,
+        })),
+      };
     } catch (error) {
       console.error('Fetch Error: Could not fetch performance trend from API', error);
       return null;
@@ -96,13 +118,21 @@ const fetchPlayerEventMap = async (playerId: string | null): Promise<PlayerEvent
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/player-analysis/event-map?player_id=${playerId}`);
+      // Assuming event_type=all or similar would be needed, or default to main events
+      const response = await fetch(`${baseUrl}/player-analysis/event-map?player_id=${playerId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch player event map', response.status, response.statusText);
         return [];
       }
-      const data: PlayerEvent[] = await response.json();
-      return data;
+      const apiData: PlayerEventMapResponseAPI = await response.json();
+      return apiData.events.map(event => ({
+        id: event.id,
+        type: event.type,
+        x: event.x,
+        y: event.y,
+        outcome: typeof event.success === 'boolean' ? (event.success ? 'success' : 'fail') : (event.success || 'neutral'),
+        minute: event.minute,
+      }));
     } catch (error) {
       console.error('Fetch Error: Could not fetch player event map from API', error);
       return [];
@@ -122,25 +152,25 @@ const fetchPlayerEventMap = async (playerId: string | null): Promise<PlayerEvent
 };
 
 export default function PlayerAnalysisPage() {
-  const { selectedPlayer } = useFilters();
-  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const { selectedPlayer } = useFilters(); // selectedPlayer from context is APIPlayer
+  const [profile, setProfile] = useState<PlayerProfile | null>(null); // UI uses PlayerProfile
   const [performanceData, setPerformanceData] = useState<PerformanceTrendData | null>(null);
   const [eventMapData, setEventMapData] = useState<PlayerEvent[]>([]);
-  const [currentMetric, setCurrentMetric] = useState('xG');
+  const [currentMetric, setCurrentMetric] = useState('xG'); // Default metric
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingTrend, setLoadingTrend] = useState(true);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [apiError, setApiError] = useState(false);
 
   useEffect(() => {
-    if (selectedPlayer) {
+    if (selectedPlayer && selectedPlayer.player_id) {
       setLoadingProfile(true);
       setLoadingTrend(true); 
       setLoadingEvents(true);
       setApiError(false);
 
       const loadProfile = async () => {
-        const data = await fetchPlayerProfile(selectedPlayer.id);
+        const data = await fetchPlayerProfile(selectedPlayer.player_id.toString());
         if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) setApiError(true);
         setProfile(data);
         setLoadingProfile(false);
@@ -148,8 +178,10 @@ export default function PlayerAnalysisPage() {
       loadProfile();
 
       const loadEvents = async () => {
-        const data = await fetchPlayerEventMap(selectedPlayer.id);
-         if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) setApiError(true); 
+        const data = await fetchPlayerEventMap(selectedPlayer.player_id.toString());
+         if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && data.length === 0) {
+           // Consider if empty events is an error or valid empty state
+         }
         setEventMapData(data || []);
         setLoadingEvents(false);
       };
@@ -167,16 +199,12 @@ export default function PlayerAnalysisPage() {
   }, [selectedPlayer]);
   
   useEffect(() => {
-    if (selectedPlayer) {
+    if (selectedPlayer && selectedPlayer.player_id) {
       setLoadingTrend(true);
-      setApiError(false); 
+      // setApiError(false); // ApiError for trend is handled by placeholder
       const loadTrend = async () => {
-        const data = await fetchPerformanceTrend(selectedPlayer.id, currentMetric);
-        if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) {
-          // If profile also failed, apiError would be true. 
-          // If only trend fails, we might want a more specific error indicator.
-          // For now, a missing trend data will show the empty placeholder.
-        }
+        const data = await fetchPerformanceTrend(selectedPlayer.player_id.toString(), currentMetric);
+        // if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !data) {} // Handled by placeholder
         setPerformanceData(data);
         setLoadingTrend(false);
       };
@@ -198,7 +226,7 @@ export default function PlayerAnalysisPage() {
     );
   }
   
-  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !profile && !loadingProfile) { // Show general API error if profile failed
+  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && !profile && !loadingProfile) {
     return (
       <>
         <PageHeader title="Player Analysis" />
@@ -257,14 +285,14 @@ export default function PlayerAnalysisPage() {
             <CardTitle className="text-lg">Performance Trend</CardTitle>
              <Tabs value={currentMetric} onValueChange={handleMetricChange} className="w-full pt-2">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="xG">xG</TabsTrigger>
-                <TabsTrigger value="passes">Passes</TabsTrigger>
-                <TabsTrigger value="defensive_actions">Def. Actions</TabsTrigger>
+                <TabsTrigger value="goals">Goals</TabsTrigger>
+                <TabsTrigger value="xg">xG</TabsTrigger>
+                <TabsTrigger value="passes_completed">Passes</TabsTrigger> 
               </TabsList>
             </Tabs>
           </CardHeader>
           <CardContent>
-            {loadingTrend || (!performanceData && process.env.NEXT_PUBLIC_DATA_SOURCE !== 'api') ? <DataPlaceholder state="loading" className="h-[300px]" /> : (!performanceData || performanceData.data.length === 0) ? <DataPlaceholder state="empty" title="No Trend Data" message={`Performance trend for ${currentMetric} is not available.`} className="h-[300px]" /> : (
+            {loadingTrend ? <DataPlaceholder state="loading" className="h-[300px]" /> : (!performanceData || performanceData.data.length === 0) ? <DataPlaceholder state="empty" title="No Trend Data" message={`Performance trend for ${currentMetric} is not available.`} className="h-[300px]" /> : (
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={performanceData.data}>
@@ -307,3 +335,4 @@ export default function PlayerAnalysisPage() {
     </>
   );
 }
+

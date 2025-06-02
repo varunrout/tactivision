@@ -7,18 +7,31 @@ import { Download, Users, BarChartBig, Brain } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import type { Team, HeadToHeadStats, TeamStyleMetrics, MatchPrediction } from '@/types';
+import type { Team, HeadToHeadStats, TeamStyleMetrics, MatchPrediction, HeadToHeadStatsResponseAPI, MatchupTeamStyleResponseAPI, MatchPredictionResponseAPI, TeamAPI } from '@/types';
 import { MOCK_TEAMS as MOCK_TEAMS_DATA } from '@/lib/constants';
 import { useState, useEffect } from 'react';
 import { DataPlaceholder } from '@/components/shared/data-placeholder';
+
+const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 // This will be populated by API call if dataSource is 'api', or use MOCK_TEAMS_DATA otherwise
 let allTeamsForSelection: Team[] = Object.values(MOCK_TEAMS_DATA).flat();
 
 const fetchAllTeamsForSelection = async (): Promise<Team[]> => {
-  // Similar to player comparison, a general "all teams" endpoint isn't specified for core selectors.
-  // API mode will also use MOCK_TEAMS_DATA for dropdowns for now.
-  // In a real app, this might come from /core-selectors/teams without competition/season, or be tied to global filters.
+  const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
+  if (dataSource === 'api') {
+     try {
+      // The CSV for core-selectors/teams requires competition_id & season_id.
+      // A general "all teams" endpoint is not specified.
+      // For now, API mode will also use MOCK_TEAMS_DATA for dropdowns.
+      // This could be changed if a /core-selectors/all-teams endpoint becomes available.
+      console.warn("Matchup analysis page: Using mock teams for selection in API mode as a general team endpoint isn't available.");
+      return Object.values(MOCK_TEAMS_DATA).flat();
+    } catch (error) {
+      console.error("Error fetching all teams (API mode, fallback to mock):", error);
+      return Object.values(MOCK_TEAMS_DATA).flat();
+    }
+  }
   return Object.values(MOCK_TEAMS_DATA).flat();
 };
 
@@ -29,13 +42,24 @@ const fetchHeadToHead = async (team1Id: string | null, team2Id: string | null): 
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/matchup-analysis/head-to-head?team1=${team1Id}&team2=${team2Id}`);
+      const response = await fetch(`${baseUrl}/matchup-analysis/head-to-head?team1_id=${team1Id}&team2_id=${team2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch H2H stats', response.status, response.statusText);
         return null;
       }
-      const data: HeadToHeadStats = await response.json();
-      return data;
+      const apiData: HeadToHeadStatsResponseAPI = await response.json();
+      return {
+        teamAWins: apiData.summary.team1_wins || 0,
+        teamBWins: apiData.summary.team2_wins || 0,
+        draws: apiData.summary.draws || 0,
+        teamAGoals: apiData.summary.team1_goals || 0,
+        teamBGoals: apiData.summary.team2_goals || 0,
+        lastMeetings: apiData.historical_matches?.map(match => ({
+          date: match.date || 'N/A',
+          scoreline: match.score || 'N/A',
+          winner: match.winner as 'teamA' | 'teamB' | 'draw' | undefined, // Type assertion
+        })) || []
+      };
     } catch (error) {
       console.error('Fetch Error: Could not fetch H2H stats from API', error);
       return null;
@@ -63,13 +87,27 @@ const fetchTeamStyles = async (team1Id: string | null, team2Id: string | null): 
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/matchup-analysis/team-style?team1=${team1Id}&team2=${team2Id}`);
-      if (!response.ok) {
-        console.error('API Error: Failed to fetch team styles', response.status, response.statusText);
-        return null;
-      }
-      const data: {teamAStyle: TeamStyleMetrics, teamBStyle: TeamStyleMetrics} = await response.json();
-      return data;
+      // Fetch style for team 1
+      const resTeam1 = await fetch(`${baseUrl}/matchup-analysis/team-style?team_id=${team1Id}`);
+      if (!resTeam1.ok) throw new Error(`Failed to fetch style for team ${team1Id}`);
+      const dataTeam1: MatchupTeamStyleResponseAPI = await resTeam1.json();
+      
+      // Fetch style for team 2
+      const resTeam2 = await fetch(`${baseUrl}/matchup-analysis/team-style?team_id=${team2Id}`);
+      if (!resTeam2.ok) throw new Error(`Failed to fetch style for team ${team2Id}`);
+      const dataTeam2: MatchupTeamStyleResponseAPI = await resTeam2.json();
+
+      const mapToUiStyle = (apiStyle: MatchupTeamStyleResponseAPI['team_style'] | undefined): TeamStyleMetrics => ({
+        possession: apiStyle?.possession || 0,
+        directness: apiStyle?.directness || 0,
+        pressIntensity: apiStyle?.pressing_intensity || 0, // Mapped from pressing_intensity
+        buildupSpeed: apiStyle?.build_up_speed || 0, // Mapped from build_up_speed
+      });
+
+      return { 
+        teamAStyle: mapToUiStyle(dataTeam1.team_style), 
+        teamBStyle: mapToUiStyle(dataTeam2.team_style)
+      };
     } catch (error) {
       console.error('Fetch Error: Could not fetch team styles from API', error);
       return null;
@@ -93,13 +131,18 @@ const fetchMatchPrediction = async (team1Id: string | null, team2Id: string | nu
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/matchup-analysis/matchup-prediction?team1=${team1Id}&team2=${team2Id}`);
+      const response = await fetch(`${baseUrl}/matchup-analysis/matchup-prediction?team1_id=${team1Id}&team2_id=${team2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch match prediction', response.status, response.statusText);
         return null;
       }
-      const data: MatchPrediction = await response.json();
-      return data;
+      const apiData: MatchPredictionResponseAPI = await response.json();
+      return {
+        homeWinProbability: apiData.win_probability.team1,
+        drawProbability: apiData.win_probability.draw,
+        awayWinProbability: apiData.win_probability.team2,
+        keyDrivers: apiData.key_matchup_factors?.map(factor => factor.description || factor.factor) || []
+      };
     } catch (error) {
       console.error('Fetch Error: Could not fetch match prediction from API', error);
       return null;
@@ -157,7 +200,7 @@ export default function MatchupAnalysisPage() {
         const predictionData = await fetchMatchPrediction(teamA.id, teamB.id);
 
         if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && (!h2hData || !stylesData || !predictionData)) {
-          setApiError(true);
+          setApiError(true); // General API error if any crucial data is missing
         }
         
         setH2hStats(h2hData);
@@ -180,7 +223,7 @@ export default function MatchupAnalysisPage() {
 
   const isLoading = loadingH2h || loadingStyles || loadingPrediction;
 
-  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && (!teamA || !teamB) && !isLoading) { // Only show general API error if selections are made but data fails
+  if (apiError && process.env.NEXT_PUBLIC_DATA_SOURCE === 'api' && teamA && teamB && !isLoading) { 
     return (
       <>
         <PageHeader title="Matchup Analysis" />
@@ -321,22 +364,23 @@ function TeamStyleDisplay({ teamName, style }: { teamName: string, style: TeamSt
       <h3 className="text-md font-semibold mb-3 text-center">{teamName} Style</h3>
       <div className="space-y-3">
         <div>
-          <div className="flex justify-between text-xs mb-1"><span>Possession</span><span>{style.possession}%</span></div>
+          <div className="flex justify-between text-xs mb-1"><span>Possession</span><span>{style.possession.toFixed(1)}%</span></div>
           <Progress value={style.possession} className="h-2" />
         </div>
         <div>
-          <div className="flex justify-between text-xs mb-1"><span>Directness</span><span>{style.directness}</span></div>
+          <div className="flex justify-between text-xs mb-1"><span>Directness</span><span>{style.directness.toFixed(1)}</span></div>
           <Progress value={style.directness} className="h-2" />
         </div>
         <div>
-          <div className="flex justify-between text-xs mb-1"><span>Press Intensity</span><span>{style.pressIntensity}</span></div>
+          <div className="flex justify-between text-xs mb-1"><span>Press Intensity</span><span>{style.pressIntensity.toFixed(1)}</span></div>
           <Progress value={style.pressIntensity} className="h-2" />
         </div>
         <div>
-          <div className="flex justify-between text-xs mb-1"><span>Buildup Speed</span><span>{style.buildupSpeed}</span></div>
+          <div className="flex justify-between text-xs mb-1"><span>Buildup Speed</span><span>{style.buildupSpeed.toFixed(1)}</span></div>
           <Progress value={style.buildupSpeed} className="h-2" />
         </div>
       </div>
     </div>
   );
 }
+

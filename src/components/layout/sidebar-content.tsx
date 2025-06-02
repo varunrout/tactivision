@@ -13,6 +13,8 @@ import { BarChart2, Users, BarChartHorizontalBig, GitCompareArrows, Presentation
 import Image from 'next/image';
 import React, { useState, useEffect, useCallback } from 'react';
 
+const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
 const navIconsMap: { [key: string]: LucideIcon } = {
   "/dashboard": BarChart2,
   "/player-analysis": Users,
@@ -26,10 +28,9 @@ async function fetchData<T>(endpoint: string, fallbackData: T): Promise<T> {
   const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
   if (dataSource === 'api') {
     try {
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint); // Full endpoint including baseUrl is passed here
       if (!response.ok) {
         console.error(`API Error: Failed to fetch from ${endpoint}`, response.status, response.statusText);
-        // For core selectors, returning empty array on error is safer than mock data if API is expected
         return Array.isArray(fallbackData) ? [] as unknown as T : fallbackData; 
       }
       return await response.json();
@@ -38,7 +39,6 @@ async function fetchData<T>(endpoint: string, fallbackData: T): Promise<T> {
       return Array.isArray(fallbackData) ? [] as unknown as T : fallbackData;
     }
   }
-  // If not 'api', or if 'api' fetch failed and fallbackData was not an array (though it should be for lists)
   return fallbackData; 
 }
 
@@ -52,12 +52,11 @@ export function SidebarContent() {
     selectedPlayer, setPlayer,
   } = useFilters();
 
-  // State for dropdown options - uses simplified types for consistency with context and existing UI
-  const [competitions, setCompetitionsState] = useState<Competition[]>(MOCK_COMPETITIONS); // {id: string, name: string}
-  const [seasons, setSeasonsState] = useState<Season[]>([]); // {id: string, name: string}
-  const [teams, setTeamsState] = useState<Team[]>([]); // {id: string, name: string, logoUrl?: string}
-  const [matches, setMatchesState] = useState<Match[]>([]); // {id: string, name: string, date: string}
-  const [players, setPlayersState] = useState<APIPlayer[]>([]); // APIPlayer is {player_id: number, player_name: string, ...}
+  const [competitions, setCompetitionsState] = useState<Competition[]>(MOCK_COMPETITIONS);
+  const [seasons, setSeasonsState] = useState<Season[]>([]);
+  const [teams, setTeamsState] = useState<Team[]>([]);
+  const [matches, setMatchesState] = useState<Match[]>([]);
+  const [players, setPlayersState] = useState<APIPlayer[]>([]);
 
   const [loadingCompetitions, setLoadingCompetitions] = useState(false);
   const [loadingSeasons, setLoadingSeasons] = useState(false);
@@ -70,7 +69,7 @@ export function SidebarContent() {
   useEffect(() => {
     setLoadingCompetitions(true);
     if (dataSource === 'api') {
-      fetchData<CompetitionAPI[]>('/core-selectors/competitions', [])
+      fetchData<CompetitionAPI[]>(`${baseUrl}/core-selectors/competitions`, [])
         .then(apiData => {
           const mappedData: Competition[] = apiData.map(c => ({
             id: c.competition_id.toString(),
@@ -89,7 +88,7 @@ export function SidebarContent() {
     if (selectedCompetition) {
       setLoadingSeasons(true);
       if (dataSource === 'api') {
-        fetchData<SeasonAPI[]>(`/core-selectors/seasons?competition_id=${selectedCompetition.id}`, [])
+        fetchData<SeasonAPI[]>(`${baseUrl}/core-selectors/seasons?competition_id=${selectedCompetition.id}`, [])
           .then(apiData => {
             const mappedData: Season[] = apiData.map(s => ({
               id: s.season_id.toString(),
@@ -111,7 +110,7 @@ export function SidebarContent() {
     if (selectedCompetition && selectedSeason) {
       setLoadingTeams(true);
       if (dataSource === 'api') {
-        fetchData<TeamAPI[]>(`/core-selectors/teams?competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, [])
+        fetchData<TeamAPI[]>(`${baseUrl}/core-selectors/teams?competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, [])
           .then(apiData => {
             const mappedData: Team[] = apiData.map(t => ({
               id: t.team_id.toString(),
@@ -134,7 +133,7 @@ export function SidebarContent() {
     if (selectedTeam && selectedCompetition && selectedSeason) {
        setLoadingMatches(true);
        if (dataSource === 'api') {
-        fetchData<APIMatch[]>(`/core-selectors/matches?team_id=${selectedTeam.id}&competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, [])
+        fetchData<APIMatch[]>(`${baseUrl}/core-selectors/matches?team_id=${selectedTeam.id}&competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, [])
           .then(apiData => {
             const mappedData: Match[] = apiData.map(m => ({
               id: m.match_id.toString(),
@@ -157,9 +156,8 @@ export function SidebarContent() {
     if (selectedTeam) {
       setLoadingPlayers(true);
       if (dataSource === 'api') {
-        fetchData<APIPlayer[]>(`/core-selectors/players?team_id=${selectedTeam.id}`, [])
+        fetchData<APIPlayer[]>(`${baseUrl}/core-selectors/players?team_id=${selectedTeam.id}`, [])
           .then(apiData => {
-            // APIPlayer is already the type used by the context for selectedPlayer
             setPlayersState(apiData);
           })
           .finally(() => setLoadingPlayers(false));
@@ -174,9 +172,8 @@ export function SidebarContent() {
 
 
   const handleCompetitionChange = (value: string) => {
-    const comp = competitions.find(c => c.id === value); // competitions state holds {id:string, name:string}
+    const comp = competitions.find(c => c.id === value); 
     setCompetition(comp || null);
-    // Reset dependent filters
     setSeason(null);
     setTeam(null);
     setMatch(null);
@@ -204,8 +201,8 @@ export function SidebarContent() {
   };
 
   const handlePlayerChange = (value: string) => {
-    const player = players.find(p => p.player_id.toString() === value); // players state holds APIPlayer[]
-    setPlayer(player || null); // Context expects APIPlayer | null
+    const player = players.find(p => p.player_id.toString() === value); 
+    setPlayer(player || null); 
   };
 
 
