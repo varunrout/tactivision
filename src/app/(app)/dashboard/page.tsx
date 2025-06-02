@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -21,7 +20,8 @@ const fetchDashboardSummary = async (matchId: string | null): Promise<DashboardS
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/dashboard/summary?match_id=${matchId}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/dashboard/summary?match_id=${matchId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch dashboard summary', response.status, response.statusText);
         return null;
@@ -65,7 +65,8 @@ const fetchXgTimeline = async (matchId: string | null): Promise<XgTimelinePoint[
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/dashboard/xg-timeline?match_id=${matchId}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/dashboard/xg-timeline?match_id=${matchId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch XG timeline', response.status, response.statusText);
         return [];
@@ -93,7 +94,8 @@ const fetchShotMapEvents = async (matchId: string | null): Promise<ShotEvent[]> 
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/dashboard/shot-map?match_id=${matchId}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/dashboard/shot-map?match_id=${matchId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch shot map events', response.status, response.statusText);
         return [];

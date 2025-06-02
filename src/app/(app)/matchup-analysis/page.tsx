@@ -1,4 +1,3 @@
-
 "use client";
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -29,7 +28,8 @@ const fetchHeadToHead = async (team1Id: string | null, team2Id: string | null): 
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/matchup-analysis/head-to-head?team1=${team1Id}&team2=${team2Id}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/matchup-analysis/head-to-head?team1=${team1Id}&team2=${team2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch H2H stats', response.status, response.statusText);
         return null;
@@ -63,7 +63,8 @@ const fetchTeamStyles = async (team1Id: string | null, team2Id: string | null): 
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/matchup-analysis/team-style?team1=${team1Id}&team2=${team2Id}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/matchup-analysis/team-style?team1=${team1Id}&team2=${team2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch team styles', response.status, response.statusText);
         return null;
@@ -93,7 +94,8 @@ const fetchMatchPrediction = async (team1Id: string | null, team2Id: string | nu
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/matchup-analysis/matchup-prediction?team1=${team1Id}&team2=${team2Id}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/matchup-analysis/matchup-prediction?team1=${team1Id}&team2=${team2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch match prediction', response.status, response.statusText);
         return null;

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -35,7 +34,8 @@ const fetchRadarData = async (player1Id: string | null, player2Id: string | null
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/player-comparison/radar?player1=${player1Id}&player2=${player2Id}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/player-comparison/radar?player1=${player1Id}&player2=${player2Id}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch radar data', response.status, response.statusText);
         return [];
@@ -66,7 +66,8 @@ const fetchBarChartData = async (player1Id: string | null, player2Id: string | n
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/player-comparison/bar-chart?player1=${player1Id}&player2=${player2Id}&metric=${metric}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/player-comparison/bar-chart?player1=${player1Id}&player2=${player2Id}&metric=${metric}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch bar chart data', response.status, response.statusText);
         return [];

@@ -1,7 +1,7 @@
 
 export interface Competition {
-  id: string;
-  name: string;
+  competition_id: string;
+  competition_name: string;
 }
 
 export interface Season {

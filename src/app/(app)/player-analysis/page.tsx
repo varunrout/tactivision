@@ -1,4 +1,3 @@
-
 "use client";
 
 import { PageHeader } from '@/components/shared/page-header';
@@ -21,7 +20,8 @@ const fetchPlayerProfile = async (playerId: string | null): Promise<PlayerProfil
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/player-analysis/profile?player_id=${playerId}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/player-analysis/profile?player_id=${playerId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch player profile', response.status, response.statusText);
         return null;
@@ -65,7 +65,8 @@ const fetchPerformanceTrend = async (playerId: string | null, metric: string): P
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/player-analysis/performance-trend?player_id=${playerId}&metric=${metric}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/player-analysis/performance-trend?player_id=${playerId}&metric=${metric}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch performance trend', response.status, response.statusText);
         return null;
@@ -96,7 +97,8 @@ const fetchPlayerEventMap = async (playerId: string | null): Promise<PlayerEvent
 
   if (dataSource === 'api') {
     try {
-      const response = await fetch(`/player-analysis/event-map?player_id=${playerId}`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/player-analysis/event-map?player_id=${playerId}`);
       if (!response.ok) {
         console.error('API Error: Failed to fetch player event map', response.status, response.statusText);
         return [];

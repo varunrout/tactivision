@@ -9,9 +9,20 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Label } from '@/components/ui/label';
 import { useFilters } from '@/contexts/filter-context';
 import type { Competition, Season, Team, Match, Player } from '@/types';
-import { BarChart2, Users, BarChartHorizontalBig, GitCompareArrows, Presentation, SearchCheck } from 'lucide-react';
+import {
+  BarChart2,
+  Users,
+  BarChartHorizontalBig,
+  GitCompareArrows,
+  Presentation,
+  SearchCheck,
+  LucideIcon
+} from 'lucide-react';
 import Image from 'next/image';
 import React, { useState, useEffect, useCallback } from 'react';
+
+const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 
 const navIconsMap: { [key: string]: LucideIcon } = {
   "/dashboard": BarChart2,
@@ -67,7 +78,7 @@ export function SidebarContent() {
   useEffect(() => {
     if (dataSource === 'api') {
       setLoadingCompetitions(true);
-      fetchData<Competition[]>('/core-selectors/competitions', MOCK_COMPETITIONS)
+      fetchData<Competition[]>(`${baseUrl}/core-selectors/competitions`, MOCK_COMPETITIONS)
         .then(setCompetitions)
         .finally(() => setLoadingCompetitions(false));
     } else {
@@ -79,7 +90,7 @@ export function SidebarContent() {
     if (selectedCompetition) {
       if (dataSource === 'api') {
         setLoadingSeasons(true);
-        fetchData<Season[]>(`/core-selectors/seasons?competition_id=${selectedCompetition.id}`, (MOCK_SEASONS as any)[selectedCompetition.id] || [])
+        fetchData<Season[]>(`${baseUrl}/core-selectors/seasons?competition_id=${selectedCompetition.id}`, (MOCK_SEASONS as any)[selectedCompetition.id] || [])
           .then(setSeasons)
           .finally(() => setLoadingSeasons(false));
       } else {
@@ -94,7 +105,7 @@ export function SidebarContent() {
     if (selectedCompetition && selectedSeason) {
       if (dataSource === 'api') {
         setLoadingTeams(true);
-        fetchData<Team[]>(`/core-selectors/teams?competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, (MOCK_TEAMS as any)[selectedSeason.id] || [])
+        fetchData<Team[]>(`${baseUrl}/core-selectors/teams?competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, (MOCK_TEAMS as any)[selectedSeason.id] || [])
           .then(setTeams)
           .finally(() => setLoadingTeams(false));
       } else {
@@ -109,7 +120,7 @@ export function SidebarContent() {
     if (selectedTeam && selectedCompetition && selectedSeason) {
        if (dataSource === 'api') {
         setLoadingMatches(true);
-        fetchData<Match[]>(`/core-selectors/matches?team_id=${selectedTeam.id}&competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, (MOCK_MATCHES as any)[selectedTeam.id] || [])
+        fetchData<Match[]>(`${baseUrl}/core-selectors/matches?team_id=${selectedTeam.id}&competition_id=${selectedCompetition.id}&season_id=${selectedSeason.id}`, (MOCK_MATCHES as any)[selectedTeam.id] || [])
           .then(setMatches)
           .finally(() => setLoadingMatches(false));
        } else {
@@ -124,7 +135,7 @@ export function SidebarContent() {
     if (selectedTeam) {
       if (dataSource === 'api') {
         setLoadingPlayers(true);
-        fetchData<Player[]>(`/core-selectors/players?team_id=${selectedTeam.id}`, (MOCK_PLAYERS as any)[selectedTeam.id] || [])
+        fetchData<Player[]>(`${baseUrl}/core-selectors/players?team_id=${selectedTeam.id}`, (MOCK_PLAYERS as any)[selectedTeam.id] || [])
           .then(setPlayers)
           .finally(() => setLoadingPlayers(false));
       } else {
@@ -147,7 +158,7 @@ export function SidebarContent() {
               <div>
                 <Label htmlFor="competition-select" className="text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">Competition</Label>
                 <Select
-                  value={selectedCompetition?.id || ""}
+                  value={selectedCompetition?.competition_id || ""}
                   onValueChange={(value) => {
                     const comp = competitions.find(c => c.id === value);
                     setCompetition(comp || null);
