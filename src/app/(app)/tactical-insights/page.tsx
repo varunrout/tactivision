@@ -27,29 +27,6 @@ export default function TacticalInsightsPage() {
   const isMobile = useIsMobile();
   const { selectedTeam } = useFilters();
 
-  const content = (
-    <>
-    {!selectedTeam ? (
-         <DataPlaceholder state="empty" title="No Team Selected" message="Please select a team from the sidebar to view tactical insights." className="mt-6" />
-      ) : (
-        insightCategories.map(category => (
-          <Card key={category.id} id={category.id} className="rounded-[1rem] shadow-soft">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <category.icon className="h-5 w-5 text-accent" />
-                {category.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DataPlaceholder state="custom" message={`${category.label} visualization coming soon.`} className="min-h-[200px]" />
-            </CardContent>
-          </Card>
-        ))
-      )}
-    </>
-  );
-
-
   return (
     <>
       <PageHeader title="Tactical Insights">
